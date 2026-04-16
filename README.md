@@ -1,2 +1,2 @@
 # ArrowsParkour
-The Minecraft Bukkit 1.21+ parkour plugin.
+The Minecraft parkour plugin.
