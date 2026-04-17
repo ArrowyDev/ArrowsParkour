@@ -1,0 +1,9 @@
+name: Arrowsparkour
+version: 1.0-SNAPSHOT
+main: me.arrowdev.arrowsParkour.ArrowsParkour
+api-version: '1.21'
+
+commands:
+  ap:
+    description: Arrow's Parkour ana komutu
+    usage: /ap <create|chicken|wolf|clear>
