@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # User-specific stuff
 .idea/
 
@@ -8,6 +9,8 @@
 # IntelliJ
 out/
 
+=======
+>>>>>>> 6822c67f8c21ef1bdb772e1329bb94cb185922b1
 # Compiled class file
 *.class
 
@@ -17,6 +20,12 @@ out/
 # BlueJ files
 *.ctxt
 
+<<<<<<< HEAD
+=======
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+>>>>>>> 6822c67f8c21ef1bdb772e1329bb94cb185922b1
 # Package Files #
 *.jar
 *.war
@@ -28,6 +37,7 @@ out/
 
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
+<<<<<<< HEAD
 
 *~
 
@@ -111,3 +121,6 @@ buildNumber.properties
 
 # Common working directory
 run/
+=======
+replay_pid*
+>>>>>>> 6822c67f8c21ef1bdb772e1329bb94cb185922b1
