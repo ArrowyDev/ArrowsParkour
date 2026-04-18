@@ -10,9 +10,11 @@ import org.bukkit.event.player.PlayerMoveEvent;
 
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
+    private final java.util.Map<java.util.UUID, Integer> lastWinHeight;
 
     public ParkourListener(ParkourManager manager) {
         this.manager = manager;
+        this.lastWinHeight = new java.util.HashMap<>();
     }
 
     @EventHandler
@@ -22,13 +24,29 @@ public class ParkourListener implements Listener {
         if (to == null) return;
 
         ParkourSession session = manager.getSession(p);
-        if (session == null || session.isCompleted()) return;
+        if (session == null) return;
 
         int currentY = to.getBlockY();
         int startY = session.getStartY();
+        int heightDifference = currentY - startY;
+        java.util.UUID uuid = p.getUniqueId();
 
-        if (currentY >= startY + 100) {
-            manager.winParkour(p);
+        // +100 blokta olup, bir önceki rekordu geç
+        if (heightDifference >= 100) {
+            int level = heightDifference / 100;
+            Integer lastHeight = lastWinHeight.getOrDefault(uuid, -1);
+
+            // Yeni level'e ulaştıysa
+            if (lastHeight < heightDifference) {
+                lastWinHeight.put(uuid, heightDifference);
+                manager.startCountdownIfNeeded(p, heightDifference);
+            }
+        } else {
+            // 100'ün altına düştü, countdown'u iptal et
+            if (lastWinHeight.containsKey(uuid) && lastWinHeight.get(uuid) >= 100) {
+                manager.cancelCountdown(p);
+                lastWinHeight.put(uuid, heightDifference);
+            }
         }
     }
 }

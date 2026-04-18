@@ -5,20 +5,28 @@ import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
 
 import java.util.*;
 
 public class ParkourManager {
     private final ArrowsParkour plugin;
     private final Map<UUID, ParkourSession> sessions;
+    private final Map<UUID, BukkitTask> countdownTasks;
+    private final Map<UUID, Integer> countdownSeconds;
+    private final Map<String, Material> blockMaterials;
 
-    private static final int WIDTH = 15, LENGTH = 17, MAX_STEPS = 100;
-    private static final int[] PATTERN = {8, 6, 8, 6};
+    private static final int WIDTH = 20, LENGTH = 20, MAX_STEPS = 100;
+    private static final int[] PATTERN = {8, 8, 8, 8};
     private static final int[][] DIRS = {{1,0}, {0,1}, {-1,0}, {0,-1}};
 
     public ParkourManager(ArrowsParkour plugin) {
         this.plugin = plugin;
         this.sessions = new HashMap<>();
+        this.countdownTasks = new HashMap<>();
+        this.countdownSeconds = new HashMap<>();
+        this.blockMaterials = new HashMap<>();
         loadAll();
     }
 
@@ -34,72 +42,70 @@ public class ParkourManager {
         World world = player.getWorld();
         Location loc = player.getLocation();
 
-        // Spiral'in dışarı taşmaması için daha geniş alan
-        int baseX = loc.getBlockX() - WIDTH / 2;
-        int baseZ = loc.getBlockZ() - LENGTH / 2;
+        Vector dir = loc.getDirection().normalize();
+        Vector left = new Vector(-dir.getZ(), 0, dir.getX()).normalize();
+
+        Location start = loc.clone().add(left.multiply(2));
+
+        int baseX = start.getBlockX();
+        int baseZ = start.getBlockZ();
         int baseY = loc.getBlockY() - 1;
 
-        // Spiral'in ulaşabileceği max X/Z ofsetini hesapla
-        // PATTERN toplamı = 8+6+8+6 = 28, iki tur = ~56 adım, her adım 2 blok ilerliyor
-        // Güvenli margin için barrier'ı spiral alanına göre dinamik yapalım
-        int spiralMaxOffset = 30; // spiral'in gidebileceği max mesafe
-        int barrierMinX = -spiralMaxOffset - 2;
-        int barrierMaxX = spiralMaxOffset + 2;
-        int barrierMinZ = -spiralMaxOffset - 2;
-        int barrierMaxZ = spiralMaxOffset + 2;
+        int baseWidth = 17;
+        int baseLength = 17;
 
-        // TABAN - barrier alanı kadar geniş
-        for (int x = barrierMinX; x <= barrierMaxX; x++) {
-            for (int z = barrierMinZ; z <= barrierMaxZ; z++) {
-                Location b = new Location(world, baseX + WIDTH/2 + x, baseY, baseZ + LENGTH/2 + z);
+        for (int x = 0; x < baseWidth; x++) {
+            for (int z = 0; z < baseLength; z++) {
+                Location b = new Location(world, baseX + x, baseY, baseZ + z);
                 b.getBlock().setType(Material.STONE);
                 session.addBlock(b);
+                blockMaterials.put(b.getBlockX() + "," + b.getBlockY() + "," + b.getBlockZ(), Material.STONE);
             }
         }
 
-        // BARRIER - spiral alanını tamamen çevreleyen duvarlar, +120 yükseklik
-        int bX = baseX + WIDTH/2;
-        int bZ = baseZ + LENGTH/2;
-        for (int x = barrierMinX; x <= barrierMaxX; x++) {
-            for (int z = barrierMinZ; z <= barrierMaxZ; z++) {
-                if (x == barrierMinX || x == barrierMaxX || z == barrierMinZ || z == barrierMaxZ) {
-                    for (int y = baseY; y <= baseY + MAX_STEPS + 22; y++) {
-                        Location b = new Location(world, bX + x, y, bZ + z);
+        int minX = -1;
+        int maxX = baseWidth;
+        int minZ = -1;
+        int maxZ = baseLength;
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                if (x == minX || x == maxX || z == minZ || z == maxZ) {
+                    for (int y = baseY; y <= baseY + MAX_STEPS + 10; y++) {
+                        Location b = new Location(world, baseX + x, y, baseZ + z);
                         b.getBlock().setType(Material.BARRIER);
                         session.addBlock(b);
+                        blockMaterials.put(b.getBlockX() + "," + b.getBlockY() + "," + b.getBlockZ(), Material.BARRIER);
                     }
                 }
             }
         }
 
-        // SPIRAL - tek blok, 1 boşluk, Y sadece platform adımında artar
-        int currentX = WIDTH / 2; // merkeze başla
-        int currentZ = LENGTH / 2;
+        int currentX = 0;
+        int currentZ = 0;
         int platformStep = 0;
         int patternIdx = 0;
         int remaining = PATTERN[0];
 
         while (platformStep < MAX_STEPS) {
             int dirIdx = patternIdx % 4;
-            int[] dir = DIRS[dirIdx];
+            int[] dirArr = DIRS[dirIdx];
             int move = Math.min(remaining, MAX_STEPS - platformStep);
 
             for (int i = 0; i < move; i++) {
                 int y = baseY + 1 + platformStep;
 
-                // Platform koy
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
                 session.addBlock(block);
+                blockMaterials.put(block.getBlockX() + "," + block.getBlockY() + "," + block.getBlockZ(), Material.STONE);
 
-                // Platform adımı ilerle
-                currentX += dir[0];
-                currentZ += dir[1];
+                currentX += dirArr[0];
+                currentZ += dirArr[1];
                 platformStep++;
 
-                // Boşluk - sadece X/Z ilerle, blok koyma, Y artma
-                currentX += dir[0];
-                currentZ += dir[1];
+                currentX += dirArr[0];
+                currentZ += dirArr[1];
 
                 if (platformStep >= MAX_STEPS) break;
             }
@@ -111,29 +117,107 @@ public class ParkourManager {
             }
         }
 
-        saveAll();
+        saveParkourSession(uuid, session, baseX, baseZ, baseY);
 
         player.sendMessage("§aParkur oluşturuldu!");
-        player.sendMessage("§7+100 blok çık → kazanırsın.");
+        player.sendMessage("§7+100 blok çık → her 100 blokta kazanırsın!");
+    }
+
+    private void saveParkourSession(UUID uuid, ParkourSession session, int baseX, int baseZ, int baseY) {
+        FileConfiguration cfg = plugin.getConfig();
+
+        cfg.set("parkours." + uuid + ".completed", session.isCompleted());
+        cfg.set("parkours." + uuid + ".startY", session.getStartY());
+        cfg.set("parkours." + uuid + ".baseX", baseX);
+        cfg.set("parkours." + uuid + ".baseZ", baseZ);
+        cfg.set("parkours." + uuid + ".baseY", baseY);
+        cfg.set("parkours." + uuid + ".world", session.getPlayer().getWorld().getName());
+
+        List<String> blockLocations = new ArrayList<>();
+        for (Location loc : session.getAllBlocks()) {
+            String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+            Material material = blockMaterials.getOrDefault(key, Material.STONE);
+            blockLocations.add(key + ":" + material.name());
+        }
+
+        cfg.set("parkours." + uuid + ".blocks", blockLocations);
+        plugin.saveConfig();
     }
 
     public ParkourSession getSession(Player player) {
         return sessions.get(player.getUniqueId());
     }
 
-    public void winParkour(Player player) {
-        ParkourSession session = sessions.get(player.getUniqueId());
-        if (session == null || session.isCompleted()) return;
+    public void startCountdownIfNeeded(Player player, int heightDifference) {
+        UUID uuid = player.getUniqueId();
+        int level = heightDifference / 100;
 
-        session.setCompleted(true);
+        if (countdownTasks.containsKey(uuid)) return;
 
-        player.sendMessage("§6🎉 TEBRİKLER! Kazandın! 🎉");
+        countdownSeconds.put(uuid, 10);
+        ParkourSession session = getSession(player);
+        if (session == null) return;
+
+        FileConfiguration cfg = plugin.getConfig();
+
+        int baseX = cfg.getInt("parkours." + uuid + ".baseX");
+        int baseZ = cfg.getInt("parkours." + uuid + ".baseZ");
+
+        int baseWidth = 17;
+        int baseLength = 17;
+
+        Location startLoc = new Location(
+                player.getWorld(),
+                baseX + (baseWidth / 2),
+                session.getStartY() + 1,
+                baseZ + (baseLength / 2)
+        );
+
+        player.sendMessage("§6🎉 PARKUR TAMAMLANDI! 🎉");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
-        player.getWorld().strikeLightningEffect(player.getLocation());
+
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!countdownTasks.containsKey(uuid)) return;
+
+            Integer remaining = countdownSeconds.get(uuid);
+            if (remaining == null) remaining = 10;
+
+            if (remaining > 0) {
+                player.sendTitle("§6" + remaining, "§7Başlangıca ışınlanıyorsun...", 0, 20, 0);
+                countdownSeconds.put(uuid, remaining - 1);
+            } else {
+                player.teleport(startLoc);
+                player.sendMessage("§eBaslangica ışınlandın!");
+
+                countdownTasks.remove(uuid);
+                countdownSeconds.remove(uuid);
+            }
+        }, 0L, 20L);
+
+        countdownTasks.put(uuid, task);
+    }
+
+    public void cancelCountdown(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        if (countdownTasks.containsKey(uuid)) {
+            BukkitTask task = countdownTasks.remove(uuid);
+            task.cancel();
+            countdownSeconds.remove(uuid);
+            player.sendMessage("§cGeri sayım iptal edildi!");
+        }
     }
 
     public void clearParkourCompletely(Player player) {
         UUID uuid = player.getUniqueId();
+
+        if (countdownTasks.containsKey(uuid)) {
+            countdownTasks.get(uuid).cancel();
+            countdownTasks.remove(uuid);
+        }
+
+        countdownSeconds.remove(uuid);
+
         ParkourSession session = sessions.remove(uuid);
 
         if (session != null) {
@@ -172,21 +256,56 @@ public class ParkourManager {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p == null) continue;
 
+                World world = Bukkit.getWorld(cfg.getString("parkours." + uuidStr + ".world"));
+                if (world == null) continue;
+
                 ParkourSession session = new ParkourSession(p);
                 session.setCompleted(cfg.getBoolean("parkours." + uuidStr + ".completed"));
                 session.setStartY(cfg.getInt("parkours." + uuidStr + ".startY"));
+
+                List<String> blockLocations = cfg.getStringList("parkours." + uuidStr + ".blocks");
+                for (String blockStr : blockLocations) {
+                    String[] parts = blockStr.split(":");
+                    String[] coords = parts[0].split(",");
+
+                    int x = Integer.parseInt(coords[0]);
+                    int y = Integer.parseInt(coords[1]);
+                    int z = Integer.parseInt(coords[2]);
+
+                    Location blockLoc = new Location(world, x, y, z);
+                    session.addBlock(blockLoc);
+
+                    Material material = Material.STONE;
+                    if (parts.length > 1) {
+                        try {
+                            material = Material.valueOf(parts[1]);
+                        } catch (Exception ignored) {}
+                    }
+
+                    blockLoc.getBlock().setType(material);
+                }
 
                 sessions.put(uuid, session);
             } catch (Exception ignored) {}
         }
     }
 
+    public ArrowsParkour getPlugin() {
+        return plugin;
+    }
+
     public void clearAllSessions() {
+        for (BukkitTask task : countdownTasks.values()) task.cancel();
+        countdownTasks.clear();
+        countdownSeconds.clear();
+        blockMaterials.clear();
+
         for (ParkourSession session : sessions.values()) {
             for (Location loc : session.getAllBlocks()) {
                 loc.getBlock().setType(Material.AIR);
             }
         }
+
         sessions.clear();
     }
 }
