@@ -26,7 +26,7 @@ public class APCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla");
+            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan");
             return true;
         }
 
@@ -42,7 +42,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // TP (YENİ)
+        // TP
         if (args[0].equalsIgnoreCase("tp")) {
 
             FileConfiguration cfg = manager.getPlugin().getConfig();
@@ -71,6 +71,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
+        // RESET
         if (args[0].equalsIgnoreCase("reset")) {
 
             FileConfiguration cfg = manager.getPlugin().getConfig();
@@ -99,7 +100,34 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset");
+        // yeni özellik
+        if (args[0].equalsIgnoreCase("win")) {
+
+            FileConfiguration cfg = manager.getPlugin().getConfig();
+            String path = "parkours." + p.getUniqueId();
+
+            if (!cfg.contains(path + ".winX")) {
+                p.sendMessage("§cWin noktası yok!");
+                return true;
+            }
+
+            int x = cfg.getInt(path + ".winX");
+            int y = cfg.getInt(path + ".winY");
+            int z = cfg.getInt(path + ".winZ");
+
+            Location tp = new Location(
+                    p.getWorld(),
+                    x + 0.5,
+                    y + 1,
+                    z + 0.5
+            );
+
+            p.teleport(tp);
+            p.sendMessage("§6Zirveye ışınlandın!");
+            return true;
+        }
+
+        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset, /ap win");
         return true;
     }
 }

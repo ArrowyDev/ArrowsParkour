@@ -172,6 +172,8 @@ public class ParkourManager {
         int patternIdx = 0;
         int remaining = PATTERN[0];
 
+        Location lastBlock = null;
+
         while (platformStep < MAX_STEPS) {
             int dirIdx = patternIdx % 4;
             int[] dirArr = DIRS[dirIdx];
@@ -183,6 +185,7 @@ public class ParkourManager {
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
                 session.addBlock(block);
+                lastBlock = block;
                 blockMaterials.put(block.getBlockX() + "," + block.getBlockY() + "," + block.getBlockZ(), Material.STONE);
 
                 currentX += dirArr[0];
@@ -201,6 +204,20 @@ public class ParkourManager {
                 remaining = PATTERN[patternIdx % PATTERN.length];
             }
         }
+
+        // SAVE WIN BLOCK CORDS
+        FileConfiguration cfg = plugin.getConfig();
+        cfg.set("parkours." + uuid + ".winX", lastBlock.getBlockX());
+        cfg.set("parkours." + uuid + ".winY", lastBlock.getBlockY());
+        cfg.set("parkours." + uuid + ".winZ", lastBlock.getBlockZ());
+
+        cfg.set("parkours." + uuid + ".baseX", baseX);
+        cfg.set("parkours." + uuid + ".baseZ", baseZ);
+        cfg.set("parkours." + uuid + ".baseY", baseY);
+
+        plugin.saveConfig();
+
+        player.sendMessage("§aParkur oluşturuldu!");
 
         saveParkourSession(uuid, session, baseX, baseZ, baseY);
 
