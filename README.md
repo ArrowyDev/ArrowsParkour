@@ -1,9 +1,13 @@
 <div align="center">
-# 🏹 Arrow's Parkour
+
+<h1>🏹 Arrow's Parkour</h1>
+
 <img src="https://img.shields.io/badge/Minecraft-Plugin-green?style=for-the-badge">
 <img src="https://img.shields.io/badge/Status-Development-orange?style=for-the-badge">
 <img src="https://img.shields.io/badge/Version-Alpha-red?style=for-the-badge">
+
 ---
+
 </div>
 
 <details open>
