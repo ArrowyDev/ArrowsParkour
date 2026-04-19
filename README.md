@@ -24,13 +24,13 @@ This plugin is still under development, so some features may change or contain b
 - `/ap create` → creates a 20x20 parkour area  
 - `/ap clear` → clears the current parkour area  
 - `/ap tp` → teleports you to the center  
+- `/ap reset` → teleport to start  
+- `/ap win` → teleport to top  
 
 ### 🚧 Work-in-Progress Features
 
 - `/ap area` → edit terrain and blocks  
 - `/ap wolf/chicken up/down <blocks>` → spectator interaction movement  
-- `/ap reset` → teleport to start  
-- `/ap win` → teleport to top  
 - `/ap tnt <playername>` → send TNT to a player  
 - `/ap winc` → shows current win count  
 - `/ap winadd <amount>` → adds the specified number of wins  
@@ -60,13 +60,13 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap create` → 20x20 parkour alanı oluşturur  
 - `/ap clear` → parkour alanını temizler  
 - `/ap tp` → parkour merkezine ışınlar  
+- `/ap reset` → başlangıca ışınlar  
+- `/ap win` → parkour zirvesine ışınlar  
 
 ### 🚧 Yapım Aşamasındaki Özellikler
 
 - `/ap area` → araziyi ve blokları düzenleme  
 - `/ap wolf/chicken up/down <blok>` → izleyici etkileşimi  
-- `/ap reset` → başlangıca ışınlar  
-- `/ap win` → parkour zirvesine ışınlar  
 - `/ap tnt <playername>` → oyuncuya TNT gönderir  
 - `/ap winc` → mevcut win sayısını gösterir  
 - `/ap winadd <rakam>` → belirlenen rakam kadar win ekler  
