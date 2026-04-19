@@ -6,6 +6,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 
 public class ParkourListener implements Listener {
@@ -15,6 +16,13 @@ public class ParkourListener implements Listener {
     public ParkourListener(ParkourManager manager) {
         this.manager = manager;
         this.lastWinHeight = new java.util.HashMap<>();
+    }
+
+    // Oyuncu girdiğinde parkur yükle
+    @EventHandler
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        Player p = event.getPlayer();
+        manager.onPlayerJoin(p);
     }
 
     @EventHandler
@@ -31,18 +39,15 @@ public class ParkourListener implements Listener {
         int heightDifference = currentY - startY;
         java.util.UUID uuid = p.getUniqueId();
 
-        // +100 blokta olup, bir önceki rekordu geç
         if (heightDifference >= 100) {
             int level = heightDifference / 100;
             Integer lastHeight = lastWinHeight.getOrDefault(uuid, -1);
 
-            // Yeni level'e ulaştıysa
             if (lastHeight < heightDifference) {
                 lastWinHeight.put(uuid, heightDifference);
                 manager.startCountdownIfNeeded(p, heightDifference);
             }
         } else {
-            // 100'ün altına düştü, countdown'u iptal et
             if (lastWinHeight.containsKey(uuid) && lastWinHeight.get(uuid) >= 100) {
                 manager.cancelCountdown(p);
                 lastWinHeight.put(uuid, heightDifference);
