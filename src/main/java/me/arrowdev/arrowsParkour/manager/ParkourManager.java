@@ -261,7 +261,6 @@ public class ParkourManager {
                 baseZ + (baseLength / 2.0)
         );
 
-        player.sendMessage("§6🎉 PARKUR TAMAMLANDI! 🎉");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
 
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -356,7 +355,6 @@ public class ParkourManager {
         blockMaterials.clear();
 
         for (ParkourSession session : sessions.values()) {
-            plugin.getLogger().warning("⚠ Session silinirken bloklar temizleniyor: " + session.getPlayer().getName());
             for (Location loc : session.getAllBlocks()) {
                 try {
                     loc.getBlock().setType(Material.AIR);

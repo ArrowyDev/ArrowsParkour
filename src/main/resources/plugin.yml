@@ -6,4 +6,4 @@ api-version: '1.21'
 commands:
   ap:
     description: Arrow's Parkour ana komutu
-    usage: /ap <create|clear|tp>
+    usage: /ap <create|clear|tp|reset>

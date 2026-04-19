@@ -3,6 +3,7 @@ package me.arrowdev.arrowsParkour.listener;
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,13 +13,14 @@ import org.bukkit.event.player.PlayerMoveEvent;
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
     private final java.util.Map<java.util.UUID, Integer> lastWinHeight;
+    private final java.util.Map<java.util.UUID, Integer> lastDisplayHeight;
 
     public ParkourListener(ParkourManager manager) {
         this.manager = manager;
         this.lastWinHeight = new java.util.HashMap<>();
+        this.lastDisplayHeight = new java.util.HashMap<>();
     }
 
-    // Oyuncu girdiğinde parkur yükle
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
@@ -39,18 +41,34 @@ public class ParkourListener implements Listener {
         int heightDifference = currentY - startY;
         java.util.UUID uuid = p.getUniqueId();
 
+        // Mevcut yüksekliği göster
+        int lastHeight = lastDisplayHeight.getOrDefault(uuid, 0);
+        if (heightDifference != lastHeight) {
+            lastDisplayHeight.put(uuid, heightDifference);
+
+            // Subtitle'da yüksekliği göster
+            p.sendActionBar("§eMevcut Yükseklik: §a" + heightDifference + " §eBlok");
+
+            // Her blok yükseldiğinde ding sesi çal
+            if (heightDifference > lastHeight) {
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 1f, 1f);
+            }
+        }
+
+        // 100 bloğa ulaş
         if (heightDifference >= 100) {
             int level = heightDifference / 100;
-            Integer lastHeight = lastWinHeight.getOrDefault(uuid, -1);
+            Integer lastWinLvl = lastWinHeight.getOrDefault(uuid, -1);
 
-            if (lastHeight < heightDifference) {
-                lastWinHeight.put(uuid, heightDifference);
+            if (lastWinLvl < level) {
+                lastWinHeight.put(uuid, level);
                 manager.startCountdownIfNeeded(p, heightDifference);
             }
         } else {
-            if (lastWinHeight.containsKey(uuid) && lastWinHeight.get(uuid) >= 100) {
+            // 100'ün altına düştü
+            if (lastWinHeight.containsKey(uuid) && lastWinHeight.get(uuid) >= 1) {
                 manager.cancelCountdown(p);
-                lastWinHeight.put(uuid, heightDifference);
+                lastWinHeight.put(uuid, 0);
             }
         }
     }

@@ -26,7 +26,7 @@ public class APCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan");
+            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla");
             return true;
         }
 
@@ -71,7 +71,35 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp");
+        if (args[0].equalsIgnoreCase("reset")) {
+
+            FileConfiguration cfg = manager.getPlugin().getConfig();
+            String path = "parkours." + p.getUniqueId();
+
+            if (!cfg.contains(path)) {
+                p.sendMessage("§cParkurun yok!");
+                return true;
+            }
+
+            int baseX = cfg.getInt(path + ".baseX");
+            int baseZ = cfg.getInt(path + ".baseZ");
+            int baseY = cfg.getInt(path + ".baseY");
+
+            int size = 17;
+
+            Location tp = new Location(
+                    p.getWorld(),
+                    baseX + (size / 2.0),
+                    baseY + 1,
+                    baseZ + (size / 2.0)
+            );
+
+            p.teleport(tp);
+            p.sendMessage("§4İlerlemen sıfırlandı!");
+            return true;
+        }
+
+        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset");
         return true;
     }
 }
