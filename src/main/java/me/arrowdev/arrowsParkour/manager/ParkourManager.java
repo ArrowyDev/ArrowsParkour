@@ -257,13 +257,18 @@ public class ParkourManager {
         UUID uuid = player.getUniqueId();
         int level = heightDifference / 100;
 
-        if (countdownTasks.containsKey(uuid)) return;
+        if (countdownTasks.containsKey(uuid)) {
+            BukkitTask oldTask = countdownTasks.remove(uuid);
+            if (oldTask != null) oldTask.cancel();
+            countdownSeconds.remove(uuid);
+        }
 
         countdownSeconds.put(uuid, 10);
         ParkourSession session = getSession(player);
         if (session == null) return;
 
         FileConfiguration cfg = plugin.getConfig();
+        String path = "parkours." + uuid + ".wins";
 
         int baseX = cfg.getInt("parkours." + uuid + ".baseX");
         int baseZ = cfg.getInt("parkours." + uuid + ".baseZ");
@@ -281,21 +286,28 @@ public class ParkourManager {
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
 
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            if (!countdownTasks.containsKey(uuid)) return;
 
             Integer remaining = countdownSeconds.get(uuid);
-            if (remaining == null) remaining = 10;
+            if (remaining == null) return;
 
             if (remaining > 0) {
                 player.sendTitle("§6" + remaining, "§7Başlangıca ışınlanıyorsun...", 0, 20, 0);
                 countdownSeconds.put(uuid, remaining - 1);
             } else {
                 player.teleport(startLoc);
-                player.sendMessage("§eBaslangica ışınlandın!");
+                player.sendMessage("§eBaşlangıca ışınlandın!");
 
-                countdownTasks.remove(uuid);
+                // Win sayısını arttır
+                int currentWins = cfg.getInt(path, 0);
+                cfg.set(path, currentWins + 1);
+                plugin.saveConfig();
+
+                // Clean old countdown
+                BukkitTask t = countdownTasks.remove(uuid);
+                if (t != null) t.cancel();
                 countdownSeconds.remove(uuid);
             }
+
         }, 0L, 20L);
 
         countdownTasks.put(uuid, task);
