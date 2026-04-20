@@ -25,16 +25,16 @@ This plugin is still under development, so some features may change or contain b
 - `/ap clear` → clears the current parkour area  
 - `/ap tp` → teleports you to the center  
 - `/ap reset` → teleport to start  
-- `/ap win` → teleport to top  
+- `/ap win` → teleport to top
+- `/ap tnt <username>` → send TNT to the streamer  
+- `/ap winc` → shows current win count  
+- `/ap winadd <amount>` → adds the specified number of wins  
+- `/ap winclear` → clears all current wins  
 
 ### 🚧 Work-in-Progress Features
 
 - `/ap area` → edit terrain and blocks  
 - `/ap wolf/chicken up/down <blocks>` → spectator interaction movement  
-- `/ap tnt <username>` → send TNT to the streamer  
-- `/ap winc` → shows current win count  
-- `/ap winadd <amount>` → adds the specified number of wins  
-- `/ap winclear` → clears all current wins  
 - `/ap ike <amount>` → adds forward protection (for TikTok live interaction streams)  
 - `/ap gke <amount>` → adds backward protection; if forward protection exists, deducts from it first  
 
@@ -62,15 +62,15 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap tp` → parkour merkezine ışınlar  
 - `/ap reset` → başlangıca ışınlar  
 - `/ap win` → parkour zirvesine ışınlar  
+- `/ap tnt <username>` → yayıncıya TNT gönderir  
+- `/ap winc` → mevcut win sayısını gösterir  
+- `/ap winadd <rakam>` → belirlenen rakam kadar win ekler  
+- `/ap winclear` → mevcut tüm winleri temizler  
 
 ### 🚧 Yapım Aşamasındaki Özellikler
 
 - `/ap area` → araziyi ve blokları düzenleme  
 - `/ap wolf/chicken up/down <blok>` → izleyici etkileşimi  
-- `/ap tnt <username>` → yayıncıya TNT gönderir  
-- `/ap winc` → mevcut win sayısını gösterir  
-- `/ap winadd <rakam>` → belirlenen rakam kadar win ekler  
-- `/ap winclear` → mevcut tüm winleri temizler  
 - `/ap ike <rakam>` → belirlenen rakam kadar ileri koruma ekler (TikTok etkileşimli yayınlar için)  
 - `/ap gke <rakam>` → belirlenen rakam kadar geri koruma ekler; mevcutta ileri koruma varsa önce ondan eksiltir  
 
