@@ -70,9 +70,9 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 ### 🚧 Yapım Aşamasındaki Özellikler
 
 - `/ap area` → araziyi ve blokları düzenleme  
-- `/ap wolf/chicken up/down <blok>` → izleyici etkileşimi  
-- `/ap ike <rakam>` → belirlenen rakam kadar ileri koruma ekler (TikTok etkileşimli yayınlar için)  
-- `/ap gke <rakam>` → belirlenen rakam kadar geri koruma ekler; mevcutta ileri koruma varsa önce ondan eksiltir  
+- `/ap wolf/chicken up/down <blocks>` → izleyici etkileşimi  
+- `/ap ike <amount>` → belirlenen rakam kadar ileri koruma ekler (TikTok etkileşimli yayınlar için)  
+- `/ap gke <amount>` → belirlenen rakam kadar geri koruma ekler; mevcutta ileri koruma varsa önce ondan eksiltir  
 
 ### ⚠️ Not
 
