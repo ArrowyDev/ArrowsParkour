@@ -31,7 +31,7 @@ This plugin is still under development, so some features may change or contain b
 
 - `/ap area` → edit terrain and blocks  
 - `/ap wolf/chicken up/down <blocks>` → spectator interaction movement  
-- `/ap tnt <playername>` → send TNT to a player  
+- `/ap tnt <username>` → send TNT to the streamer  
 - `/ap winc` → shows current win count  
 - `/ap winadd <amount>` → adds the specified number of wins  
 - `/ap winclear` → clears all current wins  
@@ -67,7 +67,7 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 
 - `/ap area` → araziyi ve blokları düzenleme  
 - `/ap wolf/chicken up/down <blok>` → izleyici etkileşimi  
-- `/ap tnt <playername>` → oyuncuya TNT gönderir  
+- `/ap tnt <username>` → yayıncıya TNT gönderir  
 - `/ap winc` → mevcut win sayısını gösterir  
 - `/ap winadd <rakam>` → belirlenen rakam kadar win ekler  
 - `/ap winclear` → mevcut tüm winleri temizler  
