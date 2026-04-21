@@ -226,7 +226,7 @@ public class ParkourManager {
         plugin.getLogger().info("Parkur oluşturuldu: " + player.getName() + " - Blok sayısı: " + session.getAllBlocks().size());
     }
 
-    private void saveParkourSession(UUID uuid, ParkourSession session, int baseX, int baseZ, int baseY) {
+    public void saveParkourSession(UUID uuid, ParkourSession session, int baseX, int baseZ, int baseY) {
         FileConfiguration cfg = plugin.getConfig();
 
         cfg.set("parkours." + uuid + ".completed", session.isCompleted());

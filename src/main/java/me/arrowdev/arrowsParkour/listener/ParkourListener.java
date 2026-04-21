@@ -3,16 +3,19 @@ package me.arrowdev.arrowsParkour.listener;
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.util.Vector;
 
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
@@ -77,6 +80,50 @@ public class ParkourListener implements Listener {
         }
     }
 
+    // Blok kırma kontrolü
+    @EventHandler
+    public void onBlockBreak(BlockBreakEvent event) {
+        Player p = event.getPlayer();
+        Block block = event.getBlock();
+
+        ParkourSession session = manager.getSession(p);
+        if (session == null) return;
+
+        // Area edit kapalıysa engelle
+        if (!session.isAreaEditEnabled()) {
+            event.setCancelled(true);
+            p.sendMessage("§c/ap area true komutunu kullanarak terrain düzenlemesini aç!");
+            return;
+        }
+
+        // Blok listesinden kaldır
+        Location loc = block.getLocation();
+        session.getAllBlocks().remove(loc);
+        String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+        session.getBlockMaterials().remove(key);
+    }
+
+    // Blok koya kontrolü
+    @EventHandler
+    public void onBlockPlace(BlockPlaceEvent event) {
+        Player p = event.getPlayer();
+        Block block = event.getBlock();
+
+        ParkourSession session = manager.getSession(p);
+        if (session == null) return;
+
+        // Area edit kapalıysa engelle
+        if (!session.isAreaEditEnabled()) {
+            event.setCancelled(true);
+            p.sendMessage("§c/ap area true komutunu kullanarak terrain düzenlemesini aç!");
+            return;
+        }
+
+        // Blok listesine ekle
+        Location loc = block.getLocation();
+        session.addBlock(loc, block.getType());
+    }
+
     // TNT patlaması sırasında blok hasar engelle
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
@@ -88,8 +135,8 @@ public class ParkourListener implements Listener {
             for (Player player : event.getEntity().getWorld().getPlayers()) {
                 double distance = player.getLocation().distance(event.getEntity().getLocation());
                 if (distance < 20) { // 20 blok içindeki oyuncular
-                    Vector direction = player.getLocation().toVector().subtract(event.getEntity().getLocation().toVector()).normalize();
-                    player.setVelocity(direction.multiply(4)); // Uçur
+                    org.bukkit.util.Vector direction = player.getLocation().toVector().subtract(event.getEntity().getLocation().toVector()).normalize();
+                    player.setVelocity(direction.multiply(3)); // Uçur
                 }
             }
             // Yield 0 olsun (hasar vermesin)

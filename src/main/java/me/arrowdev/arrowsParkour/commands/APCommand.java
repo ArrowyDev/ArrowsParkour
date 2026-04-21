@@ -30,7 +30,7 @@ public class APCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winclear §7- Win'leri sıfırla");
+            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat");
             return true;
         }
 
@@ -128,6 +128,8 @@ public class APCommand implements CommandExecutor {
 
             p.teleport(tp);
             p.sendMessage("§6Zirveye ışınlandın!");
+            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
+            p.getWorld().strikeLightningEffect(p.getLocation());
 
             return true;
         }
@@ -182,6 +184,38 @@ public class APCommand implements CommandExecutor {
             manager.getPlugin().saveConfig();
 
             p.sendMessage("§4Win'ler sıfırlandı!");
+            return true;
+        }
+
+        // AREA - Terrain düzenlemesini aç/kapat
+        if (args[0].equalsIgnoreCase("area")) {
+            if (args.length < 2) {
+                p.sendMessage("§cKullanım: /ap area <true/false>");
+                return true;
+            }
+
+            ParkourSession session = manager.getSession(p);
+            if (session == null) {
+                p.sendMessage("§cParkurun yok!");
+                return true;
+            }
+
+            boolean enable = Boolean.parseBoolean(args[1]);
+            session.setAreaEditEnabled(enable);
+
+            if (enable) {
+                p.sendMessage("§aArea düzenlemesi AÇILDI! Blokları kırıp koya bilirsin.");
+            } else {
+                p.sendMessage("§cArea düzenlemesi KAPANDI! Blokları kıramayacaksın.");
+                // Config'e kaydet
+                FileConfiguration cfg = manager.getPlugin().getConfig();
+                String path = "parkours." + p.getUniqueId();
+
+                int baseX = cfg.getInt(path + ".baseX");
+                int baseZ = cfg.getInt(path + ".baseZ");
+                int baseY = cfg.getInt(path + ".baseY");
+                manager.saveParkourSession(p.getUniqueId(), session, baseX, baseZ, baseY);
+            }
             return true;
         }
 
@@ -252,7 +286,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset, /ap win, /ap tnt, /ap winc, /ap winadd, /ap winclear");
+        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset, /ap win, /ap tnt, /ap winc, /ap winadd, /ap winclear, /ap area");
         return true;
     }
 
