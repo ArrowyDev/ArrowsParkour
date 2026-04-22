@@ -32,6 +32,7 @@ This plugin is still under development, so some features may change or contain b
 
 ## 🎮 Current Features
 
+- `/ap` → shows all commands
 - `/ap create` → creates a 20x20 parkour area  
 - `/ap clear` → clears the current parkour area  
 - `/ap tp` → teleports you to the center  
@@ -41,15 +42,15 @@ This plugin is still under development, so some features may change or contain b
 - `/ap winc` → shows current win count  
 - `/ap winadd <amount>` → adds the specified number of wins  
 - `/ap winclear` → resets all wins  
+- `/ap area` → allows editing terrain and blocks
+- `/ap ike <amount>` → adds forward protection (for TikTok live interactions)  
+- `/ap gke <amount>` → adds backward protection; if forward protection exists, it reduces that first  
 
 ---
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap area` → allows editing terrain and blocks  
 - `/ap wolf/chicken up/down <blocks>` → spectator interaction (push up/down)  
-- `/ap ike <amount>` → adds forward protection (for TikTok live interactions)  
-- `/ap gke <amount>` → adds backward protection; if forward protection exists, it reduces that first  
 
 ---
 
@@ -83,6 +84,7 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 
 ## 🎮 Mevcut Özellikler
 
+- `/ap` → tüm komutları gösterir
 - `/ap create` → 20x20 parkour alanı oluşturur  
 - `/ap clear` → parkour alanını temizler  
 - `/ap tp` → parkour merkezine ışınlar  
@@ -92,15 +94,16 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap winc` → mevcut win sayısını gösterir  
 - `/ap winadd <rakam>` → belirtilen miktarda win ekler  
 - `/ap winclear` → tüm winleri sıfırlar  
+- `/ap area` → araziyi ve blokları düzenleme
+- `/ap area` → araziyi ve blokları düzenleme  
+- `/ap ike <amount>` → ileri koruma ekler (TikTok etkileşimli yayınlar için)  
+- `/ap gke <amount>` → geri koruma ekler; ileri koruma varsa önce ondan düşer  
 
 ---
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap area` → araziyi ve blokları düzenleme  
 - `/ap wolf/chicken up/down <blocks>` → izleyici etkileşimi (yukarı/aşağı itme)  
-- `/ap ike <amount>` → ileri koruma ekler (TikTok etkileşimli yayınlar için)  
-- `/ap gke <amount>` → geri koruma ekler; ileri koruma varsa önce ondan düşer  
 
 ---
 
