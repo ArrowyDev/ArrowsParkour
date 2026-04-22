@@ -35,22 +35,52 @@ This plugin is still under development, so some features may change or contain b
 - `/ap` → shows all commands
 - `/ap create` → creates a 20x20 parkour area  
 - `/ap clear` → clears the current parkour area  
-- `/ap tp` → teleports you to the center  
-- `/ap reset` → teleports you to the start  
+- `/ap tp` → teleports you to the center
+- `/ap tnt <username>` `PLAYERNAME` → sends TNT to the streamer  
+- `/ap reset` `PLAYERNAME` → teleports you to the start  
 - `/ap win` → teleports you to the top  
-- `/ap tnt <username>` → sends TNT to the streamer  
 - `/ap winc` → shows current win count  
-- `/ap winadd <amount>` → adds the specified number of wins  
+- `/ap winadd <amount>` → adds the specified number of wins
+- `/ap winaremove <amount>` → removes the specified number of wins
 - `/ap winclear` → resets all wins  
 - `/ap area` → allows editing terrain and blocks
-- `/ap ike <amount>` → adds forward protection (for TikTok live interactions)  
-- `/ap gke <amount>` → adds backward protection; if forward protection exists, it reduces that first  
+- `/ap save` → allows saving the parkour
+- `/ap ike <amount>` `PLAYERNAME` → adds forward protection
+- `/ap gke <amount>` `PLAYERNAME` → adds backward protection
+- `/ap prot[clear]` → shows the current protections status/clear prot status
+- `/ap dontmove <amount>` `PLAYERNAME` → restricts movement for a certain period of time
+
+---
+
+## 🔴 TikTok Live Interaction Support
+
+This plugin supports **TikTok Live interaction systems** such as Tikfinity / StreamToEarn.
+
+Viewers can trigger in-game effects in real time.
+
+### 🧩 Usage Format
+
+
+`/ap <command> <amount/null>` `PLAYERNAME`
+
+
+### 💡 Examples
+
+- `/ap tnt 1 ArrowDev`
+- `/ap dontmove 5 ArrowDev`
+- `/ap ike 10 ArrowDev`
+- `/ap win ArrowDev`
+
+> If the command does not require an amount, just put blank.
+
+This system allows streamers to create interactive and chaotic parkour gameplay experiences.
 
 ---
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap wolf/chicken up/down <blocks>` → spectator interaction (push up/down)  
+- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
+- `/ap prison <amount>` `PLAYERNAME` → the prison system
 
 ---
 
@@ -87,23 +117,52 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap` → tüm komutları gösterir
 - `/ap create` → 20x20 parkour alanı oluşturur  
 - `/ap clear` → parkour alanını temizler  
-- `/ap tp` → parkour merkezine ışınlar  
-- `/ap reset` → başlangıç noktasına ışınlar  
+- `/ap tp` → parkour merkezine ışınlar
+- `/ap tnt <username>` `PLAYERNAME` → yayıncıya TNT gönderir  
+- `/ap reset` `PLAYERNAME` → başlangıç noktasına ışınlar  
 - `/ap win` → parkour zirvesine ışınlar  
-- `/ap tnt <username>` → yayıncıya TNT gönderir  
 - `/ap winc` → mevcut win sayısını gösterir  
-- `/ap winadd <rakam>` → belirtilen miktarda win ekler  
+- `/ap winadd <rakam>` → belirtilen miktarda win ekler
+- `/ap winaremove <amount>` → belirtilen miktarda win kaldırır
 - `/ap winclear` → tüm winleri sıfırlar  
 - `/ap area` → araziyi ve blokları düzenleme
-- `/ap area` → araziyi ve blokları düzenleme  
-- `/ap ike <amount>` → ileri koruma ekler (TikTok etkileşimli yayınlar için)  
-- `/ap gke <amount>` → geri koruma ekler; ileri koruma varsa önce ondan düşer  
+- `/ap save` → araziyi ve blokları kaydetme
+- `/ap ike <amount>` `PLAYERNAME` → ileri koruma ekler
+- `/ap gke <amount>` `PLAYERNAME` → geri koruma ekler
+- `/ap prot[clear]` → mevcut koruma durumunu gösterir/mevcut koruma durumunu temizler
+- `/ap dontmove <amount>` `PLAYERNAME` → belirtilen süre boyunca hareketi kısıtlar
+  
+---
+
+## 🔴 TikTok Canlı Yayın Etkileşim Desteği
+
+Bu plugin **Tikfinity / StreamToEarn** gibi TikTok canlı yayın araçlarıyla uyumludur.
+
+İzleyiciler canlı yayında komut göndererek oyun içinde anlık etkileşim sağlayabilir.
+
+### 🧩 Kullanım Formatı
+
+
+`/ap <komut> <amount/null>` `PLAYERNAME`
+
+
+### 💡 Örnekler
+
+- `/ap tnt 1 ArrowDev`
+- `/ap dontmove 5 ArrowDev`
+- `/ap ike 10 ArrowDev`
+- `/ap win ArrowDev`
+
+> Komut miktar gerektirmiyorsa boşluk bıraka bilirsiniz.
+
+Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli hale gelir.
 
 ---
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap wolf/chicken up/down <blocks>` → izleyici etkileşimi (yukarı/aşağı itme)  
+- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
+- `/ap prison <amount>` `PLAYERNAME` → hapis sistemi
 
 ---
 
