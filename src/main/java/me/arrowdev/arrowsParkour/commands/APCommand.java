@@ -2,6 +2,7 @@ package me.arrowdev.arrowsParkour.commands;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -27,13 +28,30 @@ public class APCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-        if (!(sender instanceof Player p)) {
-            sender.sendMessage("§cSadece oyuncular!");
+        if (args.length == 0) {
+            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle");
             return true;
         }
 
-        if (args.length == 0) {
-            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle");
+        // 🔥 ANA FIX
+        Player p;
+
+        if (sender instanceof Player) {
+            if (args.length >= 2 && Bukkit.getPlayerExact(args[args.length - 1]) != null) {
+                p = Bukkit.getPlayerExact(args[args.length - 1]);
+            } else {
+                p = (Player) sender;
+            }
+        } else {
+            if (args.length < 2) {
+                sender.sendMessage("§cKonsoldan kullanım: /ap <komut> <oyuncu>");
+                return true;
+            }
+            p = Bukkit.getPlayerExact(args[args.length - 1]);
+        }
+
+        if (p == null) {
+            sender.sendMessage("§cOyuncu bulunamadı!");
             return true;
         }
 
@@ -492,7 +510,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        p.sendMessage("§cBilinmeyen komut!");
+        sender.sendMessage("§cBilinmeyen komut!");
         return true;
     }
 

@@ -6,4 +6,15 @@ api-version: '1.21'
 commands:
   ap:
     description: Arrow's Parkour ana komutu
-    usage: /ap <create|clear|tp|reset>
+    usage: /ap <create|clear|tp|reset|win|tnt|winc|winadd|winremove|winclear|area|save|ike|gke|prot|dontmove>
+    permission: arrowsparkour.use
+    permission-message: §cBu komutu kullanmak için yetkiniz yok!
+    aliases: [arrow, apk]
+
+permissions:
+  arrowsparkour.use:
+    description: AP komutlarını kullanma izni
+    default: true
+  arrowsparkour.admin:
+    description: AP yönetici izni
+    default: op
