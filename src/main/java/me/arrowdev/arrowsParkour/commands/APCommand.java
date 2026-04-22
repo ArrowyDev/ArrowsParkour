@@ -3,6 +3,7 @@ package me.arrowdev.arrowsParkour.commands;
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -12,6 +13,8 @@ import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.scheduler.BukkitScheduler;
+
+import java.util.ArrayList;
 
 public class APCommand implements CommandExecutor {
 
@@ -30,7 +33,7 @@ public class APCommand implements CommandExecutor {
         }
 
         if (args.length == 0) {
-            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat");
+            p.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle");
             return true;
         }
 
@@ -128,8 +131,6 @@ public class APCommand implements CommandExecutor {
 
             p.teleport(tp);
             p.sendMessage("§6Zirveye ışınlandın!");
-            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
-            p.getWorld().strikeLightningEffect(p.getLocation());
 
             return true;
         }
@@ -166,8 +167,39 @@ public class APCommand implements CommandExecutor {
 
                 cfg.set(path, newWins);
                 manager.getPlugin().saveConfig();
-
+                manager.createOrUpdateBossBar(p);
                 p.sendMessage("§a" + amount + " win eklendi! Toplam: §6" + newWins);
+                return true;
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cGeçerli bir sayı gir!");
+                return true;
+            }
+        }
+
+        // WINADD - Win ekle
+        if (args[0].equalsIgnoreCase("winremove")) {
+            if (args.length < 2) {
+                p.sendMessage("§cKullanım: /ap winremove <sayı>");
+                return true;
+            }
+
+            try {
+                int amount = Integer.parseInt(args[1]);
+                if (amount <= 0) {
+                    p.sendMessage("§cSayı 0'dan büyük olmalı!");
+                    return true;
+                }
+
+                FileConfiguration cfg = manager.getPlugin().getConfig();
+                String path = "parkours." + p.getUniqueId() + ".wins";
+
+                int currentWins = cfg.getInt(path, 0);
+                int newWins = currentWins - amount;
+
+                cfg.set(path, newWins);
+                manager.getPlugin().saveConfig();
+                manager.createOrUpdateBossBar(p);
+                p.sendMessage("§a" + amount + " win eksildi! Toplam: §6" + newWins);
                 return true;
             } catch (NumberFormatException e) {
                 p.sendMessage("§cGeçerli bir sayı gir!");
@@ -182,9 +214,32 @@ public class APCommand implements CommandExecutor {
 
             cfg.set(path, 0);
             manager.getPlugin().saveConfig();
-
+            manager.createOrUpdateBossBar(p);
             p.sendMessage("§4Win'ler sıfırlandı!");
             return true;
+        }
+
+        if (args[0].equalsIgnoreCase("dontmove")) {
+            if (args.length < 2) {
+                p.sendMessage("§cKullanım: /ap dontmove <saniye>");
+                return true;
+            }
+
+            try {
+                int seconds = Integer.parseInt(args[1]);
+
+                if (seconds <= 0) {
+                    p.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+
+                manager.freezePlayer(p, seconds);
+                return true;
+
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cGeçerli bir sayı gir!");
+                return true;
+            }
         }
 
         // AREA - Terrain düzenlemesini aç/kapat
@@ -205,9 +260,11 @@ public class APCommand implements CommandExecutor {
 
             if (enable) {
                 p.sendMessage("§aArea düzenlemesi AÇILDI! Blokları kırıp koya bilirsin.");
+                manager.getPlugin().getLogger().info("🔓 " + p.getName() + " area düzenlemesini açtı");
             } else {
                 p.sendMessage("§cArea düzenlemesi KAPANDI! Blokları kıramayacaksın.");
-                // Config'e kaydet
+                manager.getPlugin().getLogger().info("🔐 " + p.getName() + " area düzenlemesini kapattı - kaydediliyor...");
+
                 FileConfiguration cfg = manager.getPlugin().getConfig();
                 String path = "parkours." + p.getUniqueId();
 
@@ -219,78 +276,226 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
+        // SAVE - Mevcut blokları config'e kaydet
+        if (args[0].equalsIgnoreCase("save")) {
+            ParkourSession session = manager.getSession(p);
+            if (session == null) {
+                p.sendMessage("§cParkurun yok!");
+                return true;
+            }
+
+            FileConfiguration cfg = manager.getPlugin().getConfig();
+            String path = "parkours." + p.getUniqueId();
+
+            int baseX = cfg.getInt(path + ".baseX");
+            int baseZ = cfg.getInt(path + ".baseZ");
+            int baseY = cfg.getInt(path + ".baseY");
+
+            int baseWidth = 17;
+            int baseLength = 17;
+            int maxSteps = 100;
+
+            // Session'ı temizle
+            session.getAllBlocks().clear();
+            session.getBlockMaterials().clear();
+
+            // Parkour alanındaki TÜM blokları oku
+            int minX = baseX - 1;
+            int maxX = baseX + baseWidth;
+            int minZ = baseZ - 1;
+            int maxZ = baseZ + baseLength;
+            int minY = baseY;
+            int maxY = baseY + maxSteps + 10;
+
+            int blocksScanned = 0;
+
+            for (int x = minX; x <= maxX; x++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    for (int y = minY; y <= maxY; y++) {
+                        Location loc = new Location(p.getWorld(), x, y, z);
+                        Material blockMat = loc.getBlock().getType();
+
+                        if (blockMat != Material.AIR) {
+                            session.addBlock(loc, blockMat);
+                            blocksScanned++;
+
+                            manager.getPlugin().getLogger().info("📍 Blok tarandı: " + x + "," + y + "," + z + " -> " + blockMat.name());
+                        }
+                    }
+                }
+            }
+
+            manager.saveParkourSession(p.getUniqueId(), session, baseX, baseZ, baseY);
+            p.sendMessage("§a✓ " + blocksScanned + " blok tarandı ve kaydedildi!");
+            manager.getPlugin().getLogger().info("✅ SAVE tamamlandı: " + blocksScanned + " blok");
+            return true;
+        }
+
+        // IKE - İleri Koruma Ekle
+        if (args[0].equalsIgnoreCase("ike")) {
+            if (args.length < 2) {
+                p.sendMessage("§cKullanım: /ap ike <sayı>");
+                return true;
+            }
+
+            try {
+                int amount = Integer.parseInt(args[1]);
+                if (amount <= 0) {
+                    p.sendMessage("§cSayı 0'dan büyük olmalı!");
+                    return true;
+                }
+
+                ParkourSession session = manager.getSession(p);
+                if (session == null) {
+                    p.sendMessage("§cParkurun yok!");
+                    return true;
+                }
+
+                int backwardBefore = session.getBackwardProtection();
+                session.addForwardProtection(amount);
+                int backwardAfter = session.getBackwardProtection();
+                int forwardAmount = session.getForwardProtection();
+
+                p.sendMessage("§a✓ " + amount + " ileri koruma eklendi!");
+
+                if (backwardBefore > backwardAfter) {
+                    p.sendMessage("§7Geri korumasından §c" + (backwardBefore - backwardAfter) + " §7düşüldü!");
+                }
+
+                p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
+
+                manager.getPlugin().getLogger().info("✅ " + p.getName() + " ileri koruma: +" + amount + " (İleri: " + forwardAmount + ", Geri: " + backwardAfter + ")");
+                return true;
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cGeçerli bir sayı gir!");
+                return true;
+            }
+        }
+
+        // GKE - Geri Koruma Ekle
+        if (args[0].equalsIgnoreCase("gke")) {
+            if (args.length < 2) {
+                p.sendMessage("§cKullanım: /ap gke <sayı>");
+                return true;
+            }
+
+            try {
+                int amount = Integer.parseInt(args[1]);
+                if (amount <= 0) {
+                    p.sendMessage("§cSayı 0'dan büyük olmalı!");
+                    return true;
+                }
+
+                ParkourSession session = manager.getSession(p);
+                if (session == null) {
+                    p.sendMessage("§cParkurun yok!");
+                    return true;
+                }
+
+                int forwardBefore = session.getForwardProtection();
+                session.addBackwardProtection(amount);
+                int forwardAfter = session.getForwardProtection();
+                int backwardAmount = session.getBackwardProtection();
+
+                p.sendMessage("§c✓ " + amount + " geri koruma eklendi!");
+
+                if (forwardBefore > forwardAfter) {
+                    p.sendMessage("§7İleri korumasından §a" + (forwardBefore - forwardAfter) + " §7düşüldü!");
+                }
+
+                p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
+
+                manager.getPlugin().getLogger().info("✅ " + p.getName() + " geri koruma: +" + amount + " (İleri: " + forwardAfter + ", Geri: " + backwardAmount + ")");
+                return true;
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cGeçerli bir sayı gir!");
+                return true;
+            }
+        }
+
+        // PROT - Show prot status/Clear protections
+        if (args[0].equalsIgnoreCase("prot")) {
+            ParkourSession session = manager.getSession(p);
+            if (session == null) {
+                p.sendMessage("§cParkurun yok!");
+                return true;
+            }
+
+            // CLEAR PROTECTION
+            if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
+                session.setForwardProtection(0);
+                session.setBackwardProtection(0);
+                p.sendMessage("§4✓ Tüm korumalanız temizlendi!");
+                manager.getPlugin().getLogger().info("🗑️ " + p.getName() + " korumalanını temizledi");
+                return true;
+            }
+
+            // Show protection status
+            p.sendMessage("§6════════════════════════");
+            p.sendMessage("§6Koruma Durumu:");
+            p.sendMessage(session.getProtectionDisplay());
+            p.sendMessage("§6════════════════════════");
+            return true;
+        }
+
         // TNT
         if (args[0].equalsIgnoreCase("tnt")) {
             Player target = null;
             String displayName = null;
 
-            // Eğer playername belirtildiyse
             if (args.length > 1) {
-                // Önce oyuncu olarak ara
                 target = p.getServer().getPlayer(args[1]);
                 if (target != null) {
-                    // Oyuncu bulundu
                     displayName = target.getName();
                     p.sendMessage("§e" + target.getName() + "§a'ya TNT gönderildi!");
                     target.sendMessage("§c" + p.getName() + "§e sana TNT gönderdi!");
                 } else {
-                    // Oyuncu bulunamadı, custom isim olarak kullan
                     displayName = args[1];
                     p.sendMessage("§e" + displayName + "§a ismiyle TNT gönderildi!");
                 }
             } else {
-                // Hiç isim belirtilmemişse rastgele isim
                 displayName = generateRandomName();
                 p.sendMessage("§aRastgele isimle TNT gönderildi!");
             }
 
-            // TNT oluştur
             Location tntLoc;
 
             if (target != null) {
-                // Hedefe TNT gönder
                 tntLoc = target.getLocation().add(0, 1, 0);
             } else {
-                // Kendine TNT gönder
                 tntLoc = p.getLocation().add(0, 1, 0);
             }
 
-            // TNT'yi dünya'ya ekle
             TNTPrimed tnt = p.getWorld().spawn(tntLoc, TNTPrimed.class);
-            tnt.setFuseTicks(80); // 4 saniye içinde patlasın
-            tnt.setGravity(true); // TNT normal düşsün
+            tnt.setFuseTicks(80);
+            tnt.setGravity(true);
 
-            // TNT üstüne armor stand ekle (ad göstermek için)
             ArmorStand armorStand = p.getWorld().spawn(tntLoc.clone().add(0, -0.5, 0), ArmorStand.class);
             armorStand.setCustomName("§6🎁 " + displayName);
             armorStand.setCustomNameVisible(true);
             armorStand.setVisible(false);
-            armorStand.setGravity(false); // Armor stand havada kalıyor
+            armorStand.setGravity(false);
 
-            // Her tick'te armor stand'ı TNT'nin konumuna ışınla
             BukkitScheduler scheduler = manager.getPlugin().getServer().getScheduler();
             scheduler.runTaskTimer(manager.getPlugin(), () -> {
                 if (!tnt.isValid()) {
-                    // TNT yok olmuşsa armor stand'ı sil
                     if (armorStand.isValid()) {
                         armorStand.remove();
                     }
                     return;
                 }
-                // Armor stand'ı TNT'nin konumuna ışınla (-0.5 aşağı)
                 armorStand.teleport(tnt.getLocation().add(0, -0.5, 0));
-            }, 0L, 1L); // Her tick çalış
+            }, 0L, 1L);
 
             p.playSound(p.getLocation(), Sound.ENTITY_TNT_PRIMED, 1f, 1f);
 
             return true;
         }
 
-        p.sendMessage("§cBilinmeyen komut! /ap create, /ap clear, /ap tp, /ap reset, /ap win, /ap tnt, /ap winc, /ap winadd, /ap winclear, /ap area");
+        p.sendMessage("§cBilinmeyen komut!");
         return true;
     }
 
-    // Rastgele isim oluştur
     private String generateRandomName() {
         String[] randomNames = {
                 "testuser1","testuser2","testuser","arrowtesttnt"

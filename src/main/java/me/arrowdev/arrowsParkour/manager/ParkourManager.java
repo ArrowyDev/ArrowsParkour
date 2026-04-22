@@ -8,6 +8,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
+import org.bukkit.boss.BossBar;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+
 import java.util.*;
 
 public class ParkourManager {
@@ -15,19 +19,82 @@ public class ParkourManager {
     private final Map<UUID, ParkourSession> sessions;
     private final Map<UUID, BukkitTask> countdownTasks;
     private final Map<UUID, Integer> countdownSeconds;
-    private final Map<String, Material> blockMaterials;
     private final Set<UUID> loadedPlayers;
+    private final Map<UUID, Long> frozenPlayers = new HashMap<>();
 
     private static final int WIDTH = 20, LENGTH = 20, MAX_STEPS = 100;
     private static final int[] PATTERN = {8, 8, 8, 8};
     private static final int[][] DIRS = {{1,0}, {0,1}, {-1,0}, {0,-1}};
+
+    private final Map<UUID, BossBar> bossBars = new HashMap<>();
+
+    public void createOrUpdateBossBar(Player player) {
+        UUID uuid = player.getUniqueId();
+        FileConfiguration cfg = plugin.getConfig();
+
+        int wins = cfg.getInt("parkours." + uuid + ".wins", 0);
+
+        BossBar bar = bossBars.get(uuid);
+
+        if (bar == null) {
+            bar = Bukkit.createBossBar(
+                    "§6Win: §a" + wins,
+                    BarColor.GREEN,
+                    BarStyle.SOLID
+            );
+            bar.addPlayer(player);
+            bar.setVisible(true);
+            bossBars.put(uuid, bar);
+        } else {
+            bar.setTitle("§6Win: §a" + wins);
+        }
+    }
+
+    public void removeBossBar(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        BossBar bar = bossBars.remove(uuid);
+        if (bar != null) {
+            bar.removeAll();
+        }
+    }
+
+    public void freezePlayer(Player player, int seconds) {
+        UUID uuid = player.getUniqueId();
+
+        long endTime = System.currentTimeMillis() + (seconds * 1000L);
+        frozenPlayers.put(uuid, endTime);
+
+        player.sendMessage("§c" + seconds + " saniye boyunca hareket edemezsin!");
+
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            if (frozenPlayers.containsKey(uuid)) {
+                frozenPlayers.remove(uuid);
+                player.sendMessage("§aArtık hareket edebilirsin!");
+            }
+        }, seconds * 20L);
+    }
+
+    public boolean isFrozen(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        if (!frozenPlayers.containsKey(uuid)) return false;
+
+        long end = frozenPlayers.get(uuid);
+
+        if (System.currentTimeMillis() >= end) {
+            frozenPlayers.remove(uuid);
+            return false;
+        }
+
+        return true;
+    }
 
     public ParkourManager(ArrowsParkour plugin) {
         this.plugin = plugin;
         this.sessions = new HashMap<>();
         this.countdownTasks = new HashMap<>();
         this.countdownSeconds = new HashMap<>();
-        this.blockMaterials = new HashMap<>();
         this.loadedPlayers = new HashSet<>();
     }
 
@@ -88,18 +155,21 @@ public class ParkourManager {
                     int z = Integer.parseInt(coords[2]);
 
                     Location blockLoc = new Location(world, x, y, z);
-                    session.addBlock(blockLoc);
 
                     Material material = Material.STONE;
                     if (parts.length > 1) {
                         try {
                             material = Material.valueOf(parts[1]);
                         } catch (IllegalArgumentException ignored) {
+                            plugin.getLogger().warning("⚠ Bilinmeyen material: " + parts[1]);
                             material = Material.STONE;
                         }
                     }
 
+                    session.addBlock(blockLoc, material);
                     blockLoc.getBlock().setType(material);
+
+                    plugin.getLogger().info("✓ Blok yüklendi: " + x + "," + y + "," + z + " -> " + material.name());
                     blocksLoaded++;
                 } catch (NumberFormatException e) {
                     plugin.getLogger().warning("⚠ Blok parse hatası: " + blockStr);
@@ -113,6 +183,43 @@ public class ParkourManager {
             plugin.getLogger().warning("❌ Parkour yükleme hatası: " + uuid);
             e.printStackTrace();
         }
+    }
+
+    public void startActionBarTask() {
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+
+                ParkourSession session = getSession(p);
+                if (session == null) continue;
+
+                int currentY = p.getLocation().getBlockY();
+                int startY = session.getStartY();
+                int height = currentY - startY;
+
+                int forward = session.getForwardProtection();
+                int backward = session.getBackwardProtection();
+
+                int net = forward - backward;
+
+                String netDisplay;
+
+                if (net > 0) {
+                    netDisplay = "§aNet: +" + net;
+                } else if (net < 0) {
+                    netDisplay = "§cNet: " + net;
+                } else {
+                    netDisplay = "§7Net: 0";
+                }
+
+                String actionBar =
+                        "§eYükseklik: §a" + height +
+                                " §7| §aİleri: " + forward +
+                                " §7| §cGeri: " + backward +
+                                " §7| " + netDisplay;
+
+                p.sendActionBar(actionBar);
+            }
+        }, 0L, 10L); // 10 tick = 0.5 saniye (daha smooth için 5 yapabilirsin)
     }
 
     public void createFullParkour(Player player) {
@@ -139,14 +246,17 @@ public class ParkourManager {
         int baseWidth = 17;
         int baseLength = 17;
 
+        plugin.getLogger().info("📍 Base oluşturuluyor: baseX=" + baseX + ", baseZ=" + baseZ + ", baseY=" + baseY);
+
         for (int x = 0; x < baseWidth; x++) {
             for (int z = 0; z < baseLength; z++) {
                 Location b = new Location(world, baseX + x, baseY, baseZ + z);
                 b.getBlock().setType(Material.STONE);
-                session.addBlock(b);
-                blockMaterials.put(b.getBlockX() + "," + b.getBlockY() + "," + b.getBlockZ(), Material.STONE);
+                session.addBlock(b, Material.STONE);
             }
         }
+
+        plugin.getLogger().info("✓ Base blokları eklendi: " + (baseWidth * baseLength) + " blok");
 
         int minX = -1;
         int maxX = baseWidth;
@@ -159,12 +269,13 @@ public class ParkourManager {
                     for (int y = baseY; y <= baseY + MAX_STEPS + 10; y++) {
                         Location b = new Location(world, baseX + x, y, baseZ + z);
                         b.getBlock().setType(Material.BARRIER);
-                        session.addBlock(b);
-                        blockMaterials.put(b.getBlockX() + "," + b.getBlockY() + "," + b.getBlockZ(), Material.BARRIER);
+                        session.addBlock(b, Material.BARRIER);
                     }
                 }
             }
         }
+
+        plugin.getLogger().info("✓ Barrier duvarları eklendi");
 
         int currentX = 0;
         int currentZ = 0;
@@ -184,9 +295,8 @@ public class ParkourManager {
 
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
-                session.addBlock(block);
+                session.addBlock(block, Material.STONE);
                 lastBlock = block;
-                blockMaterials.put(block.getBlockX() + "," + block.getBlockY() + "," + block.getBlockZ(), Material.STONE);
 
                 currentX += dirArr[0];
                 currentZ += dirArr[1];
@@ -205,6 +315,8 @@ public class ParkourManager {
             }
         }
 
+        plugin.getLogger().info("✓ Spiral platformları eklendi: " + MAX_STEPS + " step");
+
         // SAVE WIN BLOCK CORDS
         FileConfiguration cfg = plugin.getConfig();
         cfg.set("parkours." + uuid + ".winX", lastBlock.getBlockX());
@@ -217,13 +329,11 @@ public class ParkourManager {
 
         plugin.saveConfig();
 
-        player.sendMessage("§aParkur oluşturuldu!");
-
         saveParkourSession(uuid, session, baseX, baseZ, baseY);
 
         player.sendMessage("§aParkur oluşturuldu! (" + session.getAllBlocks().size() + " blok)");
         player.sendMessage("§7+100 blok çık → her 100 blokta kazanırsın!");
-        plugin.getLogger().info("Parkur oluşturuldu: " + player.getName() + " - Blok sayısı: " + session.getAllBlocks().size());
+        plugin.getLogger().info("✅ Parkur oluşturuldu: " + player.getName() + " - Toplam Blok: " + session.getAllBlocks().size());
     }
 
     public void saveParkourSession(UUID uuid, ParkourSession session, int baseX, int baseZ, int baseY) {
@@ -237,16 +347,26 @@ public class ParkourManager {
         cfg.set("parkours." + uuid + ".world", session.getPlayer().getWorld().getName());
 
         List<String> blockLocations = new ArrayList<>();
+        int stoneCount = 0, barrierCount = 0, otherCount = 0;
+
         for (Location loc : session.getAllBlocks()) {
             String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
-            Material material = blockMaterials.getOrDefault(key, Material.STONE);
+            Material material = session.getBlockMaterials().getOrDefault(key, Material.STONE);
             blockLocations.add(key + ":" + material.name());
+
+            if (material == Material.STONE) stoneCount++;
+            else if (material == Material.BARRIER) barrierCount++;
+            else otherCount++;
+
+            plugin.getLogger().info("💾 Kaydediliyor: " + key + " -> " + material.name());
         }
 
         cfg.set("parkours." + uuid + ".blocks", blockLocations);
         plugin.saveConfig();
 
-        plugin.getLogger().info("Parkour config'e kaydedildi: " + uuid + " - Blok sayısı: " + blockLocations.size());
+        plugin.getLogger().info("✅ Parkour config'e kaydedildi!");
+        plugin.getLogger().info("  📊 Stone: " + stoneCount + ", Barrier: " + barrierCount + ", Diğer: " + otherCount);
+        plugin.getLogger().info("  📝 Toplam blok: " + blockLocations.size());
     }
 
     public ParkourSession getSession(Player player) {
@@ -301,6 +421,7 @@ public class ParkourManager {
                 int currentWins = cfg.getInt(path, 0);
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
+                createOrUpdateBossBar(player);//Update bossbar
 
                 // Clean old countdown
                 BukkitTask t = countdownTasks.remove(uuid);
@@ -381,7 +502,6 @@ public class ParkourManager {
         }
         countdownTasks.clear();
         countdownSeconds.clear();
-        blockMaterials.clear();
 
         for (ParkourSession session : sessions.values()) {
             for (Location loc : session.getAllBlocks()) {

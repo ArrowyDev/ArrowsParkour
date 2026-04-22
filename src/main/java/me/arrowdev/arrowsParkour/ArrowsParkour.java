@@ -19,7 +19,7 @@ public final class ArrowsParkour extends JavaPlugin {
 
         // Parkourları sunucu başladıktan SONRA yükle
         parkourManager.initialize();
-
+        parkourManager.startActionBarTask();
         getLogger().info("Arrow's Parkour başlatıldı!");
     }
 

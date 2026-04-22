@@ -2,6 +2,7 @@ package me.arrowdev.arrowsParkour.listener;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -16,6 +17,8 @@ import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
+
 
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
@@ -31,7 +34,17 @@ public class ParkourListener implements Listener {
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
+
         manager.onPlayerJoin(p);
+
+        Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
+            manager.createOrUpdateBossBar(p);
+        }, 20L);
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        manager.removeBossBar(e.getPlayer());
     }
 
     @EventHandler
@@ -39,6 +52,22 @@ public class ParkourListener implements Listener {
         Player p = event.getPlayer();
         Location to = event.getTo();
         if (to == null) return;
+
+        if (manager.isFrozen(p)) {
+            Location from = event.getFrom();
+
+            if (to == null) return;
+
+            // X ve Z sabit → hareket yok
+            to.setX(from.getX());
+            to.setZ(from.getZ());
+
+            // Y'ye dokunma → yer çekimi çalışır
+            // Pitch/Yaw'a dokunma → mouse serbest
+
+            event.setTo(to);
+            return;
+        }
 
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
@@ -48,13 +77,24 @@ public class ParkourListener implements Listener {
         int heightDifference = currentY - startY;
         java.util.UUID uuid = p.getUniqueId();
 
-        // Mevcut yüksekliği göster
+        // Oyuncu 0. yüksekliğe gelirse korumaları sıfırla
+        if (heightDifference <= 0) {
+            if (session.getForwardProtection() > 0 || session.getBackwardProtection() > 0) {
+                session.setForwardProtection(0);
+                session.setBackwardProtection(0);
+                p.sendMessage("§c⚠Korumalanız sıfırlandı!");
+                manager.getPlugin().getLogger().info("🗑️ " + p.getName() + " korumaları sıfırlandı (yükseklik: " + heightDifference + ")");
+            }
+        }
+
+        // Mevcut yüksekliği ve korumasını göster
         int lastHeight = lastDisplayHeight.getOrDefault(uuid, 0);
         if (heightDifference != lastHeight) {
             lastDisplayHeight.put(uuid, heightDifference);
 
-            // Subtitle'da yüksekliği göster
-            p.sendActionBar("§eMevcut Yükseklik: §a" + heightDifference + " §eBlok");
+            // Action bar'da yükseklik ve koruma göster
+            String protectionDisplay = session.getProtectionDisplay();
+            //p.sendActionBar("§eMevcut Yükseklik: §a" + heightDifference + " §eBlok | " + protectionDisplay);
 
             // Her blok yükseldiğinde ding sesi çal
             if (heightDifference > lastHeight) {
@@ -80,6 +120,17 @@ public class ParkourListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onJump(PlayerMoveEvent e) {
+        Player p = e.getPlayer();
+
+        if (manager.isFrozen(p)) {
+            if (e.getFrom().getY() < e.getTo().getY()) {
+                e.setTo(e.getFrom());
+            }
+        }
+    }
+
     // Blok kırma kontrolü
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
@@ -101,6 +152,8 @@ public class ParkourListener implements Listener {
         session.getAllBlocks().remove(loc);
         String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
         session.getBlockMaterials().remove(key);
+
+        manager.getPlugin().getLogger().info("❌ Blok kırıldı: " + key);
     }
 
     // Blok koya kontrolü
@@ -121,37 +174,35 @@ public class ParkourListener implements Listener {
 
         // Blok listesine ekle
         Location loc = block.getLocation();
-        session.addBlock(loc, block.getType());
+        Material material = block.getType();
+        session.addBlock(loc, material);
+
+        manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
     }
 
-    // TNT patlaması sırasında blok hasar engelle
+    // TNT patlaması
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
-        // Eğer patlayan TNT ise
         if (event.getEntity() instanceof TNTPrimed) {
-            // Bloklar kırılmasın
             event.blockList().clear();
-            // Oyuncuya vuruş velocity ver (uçur)
             for (Player player : event.getEntity().getWorld().getPlayers()) {
                 double distance = player.getLocation().distance(event.getEntity().getLocation());
-                if (distance < 20) { // 20 blok içindeki oyuncular
+                if (distance < 20) {
                     org.bukkit.util.Vector direction = player.getLocation().toVector().subtract(event.getEntity().getLocation().toVector()).normalize();
-                    player.setVelocity(direction.multiply(3)); // Uçur
+                    player.setVelocity(direction.multiply(3));
                 }
             }
-            // Yield 0 olsun (hasar vermesin)
             event.setYield(0f);
         }
     }
 
-    // TNT patlamasından oyuncu hasar almasın
+    // TNT hasar kontrolü
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player) {
-            // Eğer hasar sebebi explosion ise
             if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
                     event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
-                event.setCancelled(true); // Hasarı iptal et
+                event.setCancelled(true);
             }
         }
     }
