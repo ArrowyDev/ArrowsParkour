@@ -15,12 +15,13 @@
 
 ## ⚡ Arrow's Parkour
 
-A fun and dynamic Minecraft parkour plugin experience.
-
-This plugin is still under development, so some features may change or contain bugs.
+Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with interactive commands for live-stream events.
 
 ---
-
+## ⚠️ Requirements
+- Java 21
+- Paper/Spigot compatible server (`1.21.x`)
+---
 ## 📦 Installation
 
 1. Download the latest `.jar` file from the [releases](https://github.com/ArrowyDev/ArrowsParkour/releases) page  
@@ -54,14 +55,14 @@ This plugin is still under development, so some features may change or contain b
 
 ## 🔴 TikTok Live Interaction Support
 
-This plugin supports **TikTok Live interaction systems** such as Tikfinity / StreamToEarn.
+This plugin supports **TikTok Live interaction systems** such as [Tikfinity](https://tikfinity.zerody.one) / [StreamToEarn](https://streamtoearn.io).
 
 Viewers can trigger in-game effects in real time.
 
 ### 🧩 Usage Format
 
 
-`/ap <command> <amount/null>` `PLAYERNAME`
+`/ap <command> <amount/optional>` `PLAYERNAME`
 
 
 ### 💡 Examples
@@ -70,8 +71,6 @@ Viewers can trigger in-game effects in real time.
 - `/ap dontmove 5 ArrowDev`
 - `/ap ike 10 ArrowDev`
 - `/ap win ArrowDev`
-
-> If the command does not require an amount, just put blank.
 
 This system allows streamers to create interactive and chaotic parkour gameplay experiences.
 
@@ -97,12 +96,13 @@ This plugin is in active development. Bugs and changes may occur.
 
 ## ⚡ Arrow's Parkour
 
-Eğlenceli ve dinamik bir Minecraft parkour plugin deneyimi.
-
-Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir veya hatalar içerebilir.
+Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey parkur oyununa odaklanan bir Minecraft eklentisidir.
 
 ---
-
+## ⚠️ Gereksinimler
+- Java 21
+- Paper/Spigot uyumlu sunucu (`1.21.x`)
+---
 ## 📦 Kurulum
 
 1. [Releases](https://github.com/ArrowyDev/ArrowsParkour/releases) sayfasından en son `.jar` dosyasını indir  
@@ -136,14 +136,14 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 
 ## 🔴 TikTok Canlı Yayın Etkileşim Desteği
 
-Bu plugin **Tikfinity / StreamToEarn** gibi TikTok canlı yayın araçlarıyla uyumludur.
+Bu plugin **[Tikfinity](https://tikfinity.zerody.one) / [StreamToEarn](https://streamtoearn.io).** gibi TikTok canlı yayın araçlarıyla uyumludur.
 
 İzleyiciler canlı yayında komut göndererek oyun içinde anlık etkileşim sağlayabilir.
 
 ### 🧩 Kullanım Formatı
 
 
-`/ap <komut> <amount/null>` `PLAYERNAME`
+`/ap <komut> <amount/optional>` `PLAYERNAME`
 
 
 ### 💡 Örnekler
@@ -152,8 +152,6 @@ Bu plugin **Tikfinity / StreamToEarn** gibi TikTok canlı yayın araçlarıyla u
 - `/ap dontmove 5 ArrowDev`
 - `/ap ike 10 ArrowDev`
 - `/ap win ArrowDev`
-
-> Komut miktar gerektirmiyorsa boşluk bıraka bilirsiniz.
 
 Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli hale gelir.
 
