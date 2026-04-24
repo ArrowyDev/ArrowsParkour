@@ -10,6 +10,7 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -47,7 +48,7 @@ public class ParkourListener implements Listener {
         manager.removeBossBar(e.getPlayer());
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player p = event.getPlayer();
         Location to = event.getTo();
@@ -55,16 +56,9 @@ public class ParkourListener implements Listener {
 
         if (manager.isFrozen(p)) {
             Location from = event.getFrom();
-
             if (to == null) return;
-
-            // X ve Z sabit → hareket yok
             to.setX(from.getX());
             to.setZ(from.getZ());
-
-            // Y'ye dokunma → yer çekimi çalışır
-            // Pitch/Yaw'a dokunma → mouse serbest
-
             event.setTo(to);
             return;
         }
@@ -72,37 +66,32 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
+        // Kurta bindiyse inmesini engelle
+        if (session.hasWolf() && session.getWolf().getPassengers().contains(p)) {
+            if (p.isSneaking()) {
+                p.sendMessage("§cHedef bloğa ulaşana kadar kurttan inemezsin!");
+                event.setCancelled(true);
+                return;
+            }
+        }
+
+        int newBlockIndex = session.findNearestBlockIndex();
+        session.setCurrentBlockIndex(newBlockIndex);
+
         int currentY = to.getBlockY();
         int startY = session.getStartY();
         int heightDifference = currentY - startY;
         java.util.UUID uuid = p.getUniqueId();
 
-        // Oyuncu 0. yüksekliğe gelirse korumaları sıfırla
-        if (heightDifference <= 0) {
-            if (session.getForwardProtection() > 0 || session.getBackwardProtection() > 0) {
-                session.setForwardProtection(0);
-                session.setBackwardProtection(0);
-                p.sendMessage("§c⚠Korumalanız sıfırlandı!");
-                manager.getPlugin().getLogger().info("🗑️ " + p.getName() + " korumaları sıfırlandı (yükseklik: " + heightDifference + ")");
-            }
-        }
-
-        // Mevcut yüksekliği ve korumasını göster
         int lastHeight = lastDisplayHeight.getOrDefault(uuid, 0);
         if (heightDifference != lastHeight) {
             lastDisplayHeight.put(uuid, heightDifference);
 
-            // Action bar'da yükseklik ve koruma göster
-            String protectionDisplay = session.getProtectionDisplay();
-            //p.sendActionBar("§eMevcut Yükseklik: §a" + heightDifference + " §eBlok | " + protectionDisplay);
-
-            // Her blok yükseldiğinde ding sesi çal
             if (heightDifference > lastHeight) {
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 1f, 1f);
             }
         }
 
-        // 100 bloğa ulaş
         if (heightDifference >= 100) {
             int level = heightDifference / 100;
             Integer lastWinLvl = lastWinHeight.getOrDefault(uuid, -1);
@@ -112,11 +101,26 @@ public class ParkourListener implements Listener {
                 manager.startCountdownIfNeeded(p, heightDifference);
             }
         } else {
-            // 100'ün altına düştü
             if (lastWinHeight.containsKey(uuid) && lastWinHeight.get(uuid) >= 1) {
                 manager.cancelCountdown(p);
                 lastWinHeight.put(uuid, 0);
             }
+        }
+    }
+
+    @EventHandler
+    public void onDismount(org.bukkit.event.entity.EntityDismountEvent e) {
+        if (!(e.getEntity() instanceof Player p)) return;
+
+        ParkourSession session = manager.getSession(p);
+        if (session == null) return;
+
+        if (session.hasWolf() && e.getDismounted().equals(session.getWolf())) {
+            e.setCancelled(true);
+
+            Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
+                session.getWolf().addPassenger(p);
+            }, 1L);
         }
     }
 
@@ -131,7 +135,6 @@ public class ParkourListener implements Listener {
         }
     }
 
-    // Blok kırma kontrolü
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
@@ -140,14 +143,12 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        // Area edit kapalıysa engelle
         if (!session.isAreaEditEnabled()) {
             event.setCancelled(true);
             p.sendMessage("§c/ap area true komutunu kullanarak terrain düzenlemesini aç!");
             return;
         }
 
-        // Blok listesinden kaldır
         Location loc = block.getLocation();
         session.getAllBlocks().remove(loc);
         String key = loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
@@ -156,7 +157,6 @@ public class ParkourListener implements Listener {
         manager.getPlugin().getLogger().info("❌ Blok kırıldı: " + key);
     }
 
-    // Blok koya kontrolü
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         Player p = event.getPlayer();
@@ -165,14 +165,12 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        // Area edit kapalıysa engelle
         if (!session.isAreaEditEnabled()) {
             event.setCancelled(true);
             p.sendMessage("§c/ap area true komutunu kullanarak terrain düzenlemesini aç!");
             return;
         }
 
-        // Blok listesine ekle
         Location loc = block.getLocation();
         Material material = block.getType();
         session.addBlock(loc, material);
@@ -180,7 +178,6 @@ public class ParkourListener implements Listener {
         manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
     }
 
-    // TNT patlaması
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         if (event.getEntity() instanceof TNTPrimed) {
@@ -196,7 +193,6 @@ public class ParkourListener implements Listener {
         }
     }
 
-    // TNT hasar kontrolü
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player) {

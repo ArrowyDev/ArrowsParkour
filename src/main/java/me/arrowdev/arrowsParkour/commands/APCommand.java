@@ -13,9 +13,19 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
+import org.bukkit.entity.Wolf;
 import org.bukkit.scheduler.BukkitScheduler;
+import java.util.Comparator;
 
+import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
+
+import org.bukkit.util.Vector;
+import org.bukkit.scheduler.BukkitRunnable;
+
+import static java.util.Locale.filter;
+import static java.util.stream.Collectors.toList;
 
 public class APCommand implements CommandExecutor {
 
@@ -29,11 +39,10 @@ public class APCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (args.length == 0) {
-            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle");
+            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et");
             return true;
         }
 
-        // 🔥 ANA FIX
         Player p;
 
         if (sender instanceof Player) {
@@ -69,7 +78,6 @@ public class APCommand implements CommandExecutor {
 
         // TP
         if (args[0].equalsIgnoreCase("tp")) {
-
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId();
 
@@ -98,13 +106,18 @@ public class APCommand implements CommandExecutor {
 
         // RESET
         if (args[0].equalsIgnoreCase("reset")) {
-
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId();
 
             if (!cfg.contains(path)) {
                 p.sendMessage("§cParkurun yok!");
                 return true;
+            }
+
+            ParkourSession session = manager.getSession(p);
+            if (session != null) {
+                session.setForwardProtection(0);
+                session.setBackwardProtection(0);
             }
 
             int baseX = cfg.getInt(path + ".baseX");
@@ -127,7 +140,6 @@ public class APCommand implements CommandExecutor {
 
         // WIN
         if (args[0].equalsIgnoreCase("win")) {
-
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId();
 
@@ -149,11 +161,10 @@ public class APCommand implements CommandExecutor {
 
             p.teleport(tp);
             p.sendMessage("§6Zirveye ışınlandın!");
-
             return true;
         }
 
-        // WINC - Win sayısını göster
+        // WINC
         if (args[0].equalsIgnoreCase("winc")) {
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId() + ".wins";
@@ -163,7 +174,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // WINADD - Win ekle
+        // WINADD
         if (args[0].equalsIgnoreCase("winadd")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap winadd <sayı>");
@@ -194,7 +205,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // WINADD - Win ekle
+        // WINREMOVE
         if (args[0].equalsIgnoreCase("winremove")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap winremove <sayı>");
@@ -225,7 +236,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // WINCLEAR - Win'leri sıfırla
+        // WINCLEAR
         if (args[0].equalsIgnoreCase("winclear")) {
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId() + ".wins";
@@ -237,6 +248,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
+        // DONTMOVE
         if (args[0].equalsIgnoreCase("dontmove")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap dontmove <saniye>");
@@ -245,7 +257,6 @@ public class APCommand implements CommandExecutor {
 
             try {
                 int seconds = Integer.parseInt(args[1]);
-
                 if (seconds <= 0) {
                     p.sendMessage("§cSüre 0'dan büyük olmalı!");
                     return true;
@@ -253,14 +264,133 @@ public class APCommand implements CommandExecutor {
 
                 manager.freezePlayer(p, seconds);
                 return true;
-
             } catch (NumberFormatException e) {
                 p.sendMessage("§cGeçerli bir sayı gir!");
                 return true;
             }
         }
 
-        // AREA - Terrain düzenlemesini aç/kapat
+        if (args[0].equalsIgnoreCase("wolf")) {
+
+            ParkourSession session = manager.getSession(p);
+            if (session == null) {
+                p.sendMessage("§cParkur yok!");
+                return true;
+            }
+
+            if (args.length < 3) {
+                p.sendMessage("§cKullanım: /ap wolf <up|down> <blok>");
+                return true;
+            }
+
+            try {
+
+                String direction = args[1];
+                int step = Integer.parseInt(args[2]);
+
+                List<Location> path = new ArrayList<>(session.getJumpBlocks());
+
+                if (path.size() < 2) {
+                    p.sendMessage("§cJumpBlock yok!");
+                    return true;
+                }
+
+                path.sort(Comparator.comparingInt(Location::getBlockY));
+
+                Location playerLoc = p.getLocation();
+
+                // en yakın nokta (SAĞLAM)
+                int currentIndex = 0;
+                double best = Double.MAX_VALUE;
+
+                for (int i = 0; i < path.size(); i++) {
+                    double d = path.get(i).distance(playerLoc);
+                    if (d < best) {
+                        best = d;
+                        currentIndex = i;
+                    }
+                }
+
+                int targetIndex;
+
+                if (direction.equalsIgnoreCase("up")) {
+                    targetIndex = Math.min(currentIndex + step, path.size() - 1);
+                } else {
+                    targetIndex = Math.max(currentIndex - step, 0);
+                }
+
+                if (targetIndex == currentIndex) {
+                    p.sendMessage("§cHedef yok!");
+                    return true;
+                }
+
+                Location target = path.get(targetIndex).clone().add(0.5, 1, 0.5);
+
+                Wolf wolf;
+
+                if (!session.hasWolf()) {
+                    wolf = p.getWorld().spawn(p.getLocation(), Wolf.class);
+                    wolf.setTamed(true);
+                    wolf.setOwner(p);
+                    wolf.setAI(false);
+                    wolf.setGravity(false);
+                    session.setWolf(wolf);
+                } else {
+                    wolf = session.getWolf();
+                }
+
+                Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
+                    wolf.addPassenger(p);
+                }, 2L);
+
+                new BukkitRunnable() {
+
+                    @Override
+                    public void run() {
+
+                        if (!p.isOnline() || !session.hasWolf()) {
+                            cancel();
+                            return;
+                        }
+
+                        Location wolfLoc = wolf.getLocation();
+
+                        double dist = wolfLoc.distance(target);
+
+                        // 🎯 hedefe ulaştı
+                        if (dist < 1.5) {
+
+                            session.setCurrentBlockIndex(targetIndex);
+                            session.dismountWolf(p);
+
+                            Bukkit.getScheduler().runTaskLater(manager.getPlugin(), session::removeWolf, 10L);
+
+                            p.sendMessage("§a✓ Kurt hedefe ulaştı!");
+                            cancel();
+                            return;
+                        }
+
+                        Vector dir = target.toVector()
+                                .subtract(wolfLoc.toVector())
+                                .normalize()
+                                .multiply(0.8);
+
+                        wolf.teleport(wolfLoc.add(dir));
+                    }
+
+                }.runTaskTimer(manager.getPlugin(), 0L, 1L);
+
+                p.sendMessage("§a🐺 Kurt hareket ediyor!");
+                return true;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                p.sendMessage("§cHata: " + e.getMessage());
+                return true;
+            }
+        }
+
+        // AREA
         if (args[0].equalsIgnoreCase("area")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap area <true/false>");
@@ -294,7 +424,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // SAVE - Mevcut blokları config'e kaydet
+        // SAVE
         if (args[0].equalsIgnoreCase("save")) {
             ParkourSession session = manager.getSession(p);
             if (session == null) {
@@ -313,11 +443,9 @@ public class APCommand implements CommandExecutor {
             int baseLength = 17;
             int maxSteps = 100;
 
-            // Session'ı temizle
             session.getAllBlocks().clear();
             session.getBlockMaterials().clear();
 
-            // Parkour alanındaki TÜM blokları oku
             int minX = baseX - 1;
             int maxX = baseX + baseWidth;
             int minZ = baseZ - 1;
@@ -349,7 +477,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // IKE - İleri Koruma Ekle
+        // IKE
         if (args[0].equalsIgnoreCase("ike")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap ike <sayı>");
@@ -390,7 +518,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // GKE - Geri Koruma Ekle
+        // GKE
         if (args[0].equalsIgnoreCase("gke")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap gke <sayı>");
@@ -431,7 +559,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // PROT - Show prot status/Clear protections
+        // PROT
         if (args[0].equalsIgnoreCase("prot")) {
             ParkourSession session = manager.getSession(p);
             if (session == null) {
@@ -439,7 +567,6 @@ public class APCommand implements CommandExecutor {
                 return true;
             }
 
-            // CLEAR PROTECTION
             if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
                 session.setForwardProtection(0);
                 session.setBackwardProtection(0);
@@ -448,7 +575,6 @@ public class APCommand implements CommandExecutor {
                 return true;
             }
 
-            // Show protection status
             p.sendMessage("§6════════════════════════");
             p.sendMessage("§6Koruma Durumu:");
             p.sendMessage(session.getProtectionDisplay());

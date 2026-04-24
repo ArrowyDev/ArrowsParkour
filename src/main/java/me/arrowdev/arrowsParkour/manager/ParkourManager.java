@@ -102,11 +102,9 @@ public class ParkourManager {
         Bukkit.getScheduler().runTaskLater(plugin, this::loadAll, 1L);
     }
 
-    // Oyuncu girdiğinde çağrıl
     public void onPlayerJoin(Player player) {
         UUID uuid = player.getUniqueId();
 
-        // Eğer daha yüklenmemişse yükle
         if (!loadedPlayers.contains(uuid)) {
             loadPlayerParkour(uuid, player);
             loadedPlayers.add(uuid);
@@ -140,6 +138,19 @@ public class ParkourManager {
             if (blockLocations.isEmpty()) {
                 plugin.getLogger().warning("❌ Blok listesi boş: " + uuid);
                 return;
+            }
+
+            List<String> jumpList = cfg.getStringList(path + ".jumpBlocks");
+
+            for (String s : jumpList) {
+                String[] parts = s.split(",");
+
+                int x = Integer.parseInt(parts[0]);
+                int y = Integer.parseInt(parts[1]);
+                int z = Integer.parseInt(parts[2]);
+
+                Location loc = new Location(world, x, y, z);
+                session.addJumpBlock(loc);
             }
 
             int blocksLoaded = 0;
@@ -188,7 +199,6 @@ public class ParkourManager {
     public void startActionBarTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
-
                 ParkourSession session = getSession(p);
                 if (session == null) continue;
 
@@ -198,11 +208,9 @@ public class ParkourManager {
 
                 int forward = session.getForwardProtection();
                 int backward = session.getBackwardProtection();
-
                 int net = forward - backward;
 
                 String netDisplay;
-
                 if (net > 0) {
                     netDisplay = "§aNet: +" + net;
                 } else if (net < 0) {
@@ -219,7 +227,7 @@ public class ParkourManager {
 
                 p.sendActionBar(actionBar);
             }
-        }, 0L, 10L); // 10 tick = 0.5 saniye (daha smooth için 5 yapabilirsin)
+        }, 0L, 2L); // 2L yaparak daha az sık update et
     }
 
     public void createFullParkour(Player player) {
@@ -296,6 +304,7 @@ public class ParkourManager {
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
                 session.addBlock(block, Material.STONE);
+                session.addJumpBlock(block);
                 lastBlock = block;
 
                 currentX += dirArr[0];
@@ -317,7 +326,6 @@ public class ParkourManager {
 
         plugin.getLogger().info("✓ Spiral platformları eklendi: " + MAX_STEPS + " step");
 
-        // SAVE WIN BLOCK CORDS
         FileConfiguration cfg = plugin.getConfig();
         cfg.set("parkours." + uuid + ".winX", lastBlock.getBlockX());
         cfg.set("parkours." + uuid + ".winY", lastBlock.getBlockY());
@@ -360,6 +368,14 @@ public class ParkourManager {
 
             plugin.getLogger().info("💾 Kaydediliyor: " + key + " -> " + material.name());
         }
+
+        List<String> jumpList = new ArrayList<>();
+
+        for (Location loc : session.getJumpBlocks()) {
+            jumpList.add(loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ());
+        }
+
+        cfg.set("parkours." + uuid + ".jumpBlocks", jumpList);
 
         cfg.set("parkours." + uuid + ".blocks", blockLocations);
         plugin.saveConfig();
@@ -417,11 +433,15 @@ public class ParkourManager {
                 player.teleport(startLoc);
                 player.sendMessage("§eBaşlangıca ışınlandın!");
 
+                // Korumaları sıfırla
+                session.setForwardProtection(0);
+                session.setBackwardProtection(0);
+
                 // Win sayısını arttır
                 int currentWins = cfg.getInt(path, 0);
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
-                createOrUpdateBossBar(player);//Update bossbar
+                createOrUpdateBossBar(player);
 
                 // Clean old countdown
                 BukkitTask t = countdownTasks.remove(uuid);

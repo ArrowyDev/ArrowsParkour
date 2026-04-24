@@ -3,6 +3,7 @@ package me.arrowdev.arrowsParkour.model;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Wolf;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,8 +17,10 @@ public class ParkourSession {
     private boolean completed;
     private int startY;
     private boolean areaEditEnabled;
-    private int forwardProtection; // İleri koruma
-    private int backwardProtection; // Geri koruma
+    private int forwardProtection;
+    private int backwardProtection;
+    private Wolf wolf;
+    private int currentBlockIndex;
 
     public ParkourSession(Player player) {
         this.player = player;
@@ -27,6 +30,8 @@ public class ParkourSession {
         this.areaEditEnabled = false;
         this.forwardProtection = 0;
         this.backwardProtection = 0;
+        this.wolf = null;
+        this.currentBlockIndex = 0;
     }
 
     public Player getPlayer() { return player; }
@@ -52,21 +57,73 @@ public class ParkourSession {
     public boolean isAreaEditEnabled() { return areaEditEnabled; }
     public void setAreaEditEnabled(boolean enabled) { this.areaEditEnabled = enabled; }
 
-    // İleri Koruma (IKE) - Geri korumasından düşer
     public int getForwardProtection() { return forwardProtection; }
     public void setForwardProtection(int amount) { this.forwardProtection = Math.max(0, amount); }
     public void addForwardProtection(int amount) {
         this.forwardProtection += Math.max(0, amount);
     }
 
-    // Geri Koruma (GKE) - İleri korumasından düşer
     public int getBackwardProtection() { return backwardProtection; }
     public void setBackwardProtection(int amount) { this.backwardProtection = Math.max(0, amount); }
     public void addBackwardProtection(int amount) {
         this.backwardProtection += Math.max(0, amount);
     }
 
-    // Toplam koruma göster (UI için)
+    public Wolf getWolf() { return wolf; }
+    public void setWolf(Wolf wolf) { this.wolf = wolf; }
+    public boolean hasWolf() { return wolf != null && wolf.isValid(); }
+    public void removeWolf() {
+        if (wolf != null && wolf.isValid()) {
+            wolf.remove();
+        }
+        wolf = null;
+    }
+
+    public void dismountWolf(Player player) {
+        if (hasWolf() && wolf.getPassengers().contains(player)) {
+            wolf.removePassenger(player);
+        }
+    }
+
+    public int getCurrentBlockIndex() { return currentBlockIndex; }
+    public void setCurrentBlockIndex(int index) { this.currentBlockIndex = Math.max(0, Math.min(index, allBlocks.size() - 1)); }
+
+    public int findNearestBlockIndex() {
+        Location playerLoc = player.getLocation();
+        int nearestIndex = 0;
+        double nearestDistance = Double.MAX_VALUE;
+
+        // Sadece parkour blokları ara (BARRIER değil)
+        for (int i = 0; i < allBlocks.size(); i++) {
+            Location loc = allBlocks.get(i);
+            Material mat = blockMaterials.getOrDefault(
+                    loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ(),
+                    Material.STONE
+            );
+
+            // BARRIER'ı (duvarları) skip et
+            if (mat == Material.BARRIER) continue;
+
+            double distance = playerLoc.distance(loc);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestIndex = i;
+            }
+        }
+
+        return nearestIndex;
+    }
+
+    private final List<Location> jumpBlocks = new ArrayList<>();
+
+    public List<Location> getJumpBlocks() {
+        return jumpBlocks;
+    }
+
+    public void addJumpBlock(Location loc) {
+        jumpBlocks.add(loc);
+    }
+
     public String getProtectionDisplay() {
         int net = forwardProtection - backwardProtection;
 
@@ -74,13 +131,13 @@ public class ParkourSession {
         String netText;
 
         if (net > 0) {
-            netColor = "§a"; // yeşil
+            netColor = "§a";
             netText = "+" + net;
         } else if (net < 0) {
-            netColor = "§c"; // kırmızı
+            netColor = "§c";
             netText = String.valueOf(net);
         } else {
-            netColor = "§7"; // gri
+            netColor = "§7";
             netText = "0";
         }
 
