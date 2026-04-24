@@ -15,12 +15,13 @@
 
 ## ⚡ Arrow's Parkour
 
-A fun and dynamic Minecraft parkour plugin experience.
-
-This plugin is still under development, so some features may change or contain bugs.
+Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with interactive commands for live-stream events.
 
 ---
-
+## ⚠️ Requirements
+- Java 21
+- Paper/Spigot compatible server (`1.21.x`)
+---
 ## 📦 Installation
 
 1. Download the latest `.jar` file from the [releases](https://github.com/ArrowyDev/ArrowsParkour/releases) page  
@@ -36,7 +37,7 @@ This plugin is still under development, so some features may change or contain b
 - `/ap create` → creates a 20x20 parkour area  
 - `/ap clear` → clears the current parkour area  
 - `/ap tp` → teleports you to the center
-- `/ap tnt <username>` `PLAYERNAME` → sends TNT to the streamer  
+- `/ap tnt <username>` `playerName` → sends TNT to the streamer  
 - `/ap reset` `PLAYERNAME` → teleports you to the start  
 - `/ap win` → teleports you to the top  
 - `/ap winc` → shows current win count  
@@ -45,23 +46,22 @@ This plugin is still under development, so some features may change or contain b
 - `/ap winclear` → resets all wins  
 - `/ap area` → allows editing terrain and blocks
 - `/ap save` → allows saving the parkour
-- `/ap ike <amount>` `PLAYERNAME` → adds forward protection
-- `/ap gke <amount>` `PLAYERNAME` → adds backward protection
+- `/ap ike <amount>` `playerName` → adds forward protection
+- `/ap gke <amount>` `playerName` → adds backward protection
 - `/ap prot[clear]` → shows the current protections status/clear prot status
-- `/ap dontmove <amount>` `PLAYERNAME` → restricts movement for a certain period of time
+- `/ap dontmove <amount>` `playerName` → restricts movement for a certain period of time
 
 ---
 
 ## 🔴 TikTok Live Interaction Support
 
-This plugin supports **TikTok Live interaction systems** such as Tikfinity / StreamToEarn.
-
 Viewers can trigger in-game effects in real time.
 
 ### 🧩 Usage Format
 
+Use this pattern for external live tools:
 
-`/ap <command> <amount/null>` `PLAYERNAME`
+`/ap <command> <amount/optional> <playerName/optional>`
 
 
 ### 💡 Examples
@@ -70,8 +70,7 @@ Viewers can trigger in-game effects in real time.
 - `/ap dontmove 5 ArrowDev`
 - `/ap ike 10 ArrowDev`
 - `/ap win ArrowDev`
-
-> If the command does not require an amount, just put blank.
+- `/ap win`
 
 This system allows streamers to create interactive and chaotic parkour gameplay experiences.
 
@@ -97,12 +96,13 @@ This plugin is in active development. Bugs and changes may occur.
 
 ## ⚡ Arrow's Parkour
 
-Eğlenceli ve dinamik bir Minecraft parkour plugin deneyimi.
-
-Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir veya hatalar içerebilir.
+Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey parkur oyununa odaklanan bir Minecraft eklentisidir.
 
 ---
-
+## ⚠️ Gereksinimler
+- Java 21
+- Paper/Spigot uyumlu sunucu (`1.21.x`)
+---
 ## 📦 Kurulum
 
 1. [Releases](https://github.com/ArrowyDev/ArrowsParkour/releases) sayfasından en son `.jar` dosyasını indir  
@@ -118,8 +118,8 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap create` → 20x20 parkour alanı oluşturur  
 - `/ap clear` → parkour alanını temizler  
 - `/ap tp` → parkour merkezine ışınlar
-- `/ap tnt <username>` `PLAYERNAME` → yayıncıya TNT gönderir  
-- `/ap reset` `PLAYERNAME` → başlangıç noktasına ışınlar  
+- `/ap tnt <username>` `playerName` → yayıncıya TNT gönderir  
+- `/ap reset` `playerName` → başlangıç noktasına ışınlar  
 - `/ap win` → parkour zirvesine ışınlar  
 - `/ap winc` → mevcut win sayısını gösterir  
 - `/ap winadd <rakam>` → belirtilen miktarda win ekler
@@ -127,23 +127,22 @@ Bu plugin hâlâ geliştirme aşamasındadır, bazı özellikler değişebilir v
 - `/ap winclear` → tüm winleri sıfırlar  
 - `/ap area` → araziyi ve blokları düzenleme
 - `/ap save` → araziyi ve blokları kaydetme
-- `/ap ike <amount>` `PLAYERNAME` → ileri koruma ekler
-- `/ap gke <amount>` `PLAYERNAME` → geri koruma ekler
+- `/ap ike <amount>` `playerName` → ileri koruma ekler
+- `/ap gke <amount>` `playerName` → geri koruma ekler
 - `/ap prot[clear]` → mevcut koruma durumunu gösterir/mevcut koruma durumunu temizler
-- `/ap dontmove <amount>` `PLAYERNAME` → belirtilen süre boyunca hareketi kısıtlar
+- `/ap dontmove <amount>` `playerName` → belirtilen süre boyunca hareketi kısıtlar
   
 ---
 
 ## 🔴 TikTok Canlı Yayın Etkileşim Desteği
 
-Bu plugin **Tikfinity / StreamToEarn** gibi TikTok canlı yayın araçlarıyla uyumludur.
-
 İzleyiciler canlı yayında komut göndererek oyun içinde anlık etkileşim sağlayabilir.
 
 ### 🧩 Kullanım Formatı
 
+Harici canlı araçlar için bu şablonu kullanın:
 
-`/ap <komut> <amount/null>` `PLAYERNAME`
+`/ap <command> <amount/optional> <playerName/optional>`
 
 
 ### 💡 Örnekler
@@ -152,8 +151,7 @@ Bu plugin **Tikfinity / StreamToEarn** gibi TikTok canlı yayın araçlarıyla u
 - `/ap dontmove 5 ArrowDev`
 - `/ap ike 10 ArrowDev`
 - `/ap win ArrowDev`
-
-> Komut miktar gerektirmiyorsa boşluk bıraka bilirsiniz.
+- `/ap win`
 
 Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli hale gelir.
 
