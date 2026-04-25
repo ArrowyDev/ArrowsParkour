@@ -270,124 +270,47 @@ public class APCommand implements CommandExecutor {
             }
         }
 
+        // ⭐ WOLF KOMUTU - TEST VERSİYON ⭐
         if (args[0].equalsIgnoreCase("wolf")) {
+            p.sendMessage("§e[1] Wolf komutu başladı!");
 
             ParkourSession session = manager.getSession(p);
+            p.sendMessage("§e[2] Session: " + (session == null ? "§cNULL" : "§aOK"));
+
             if (session == null) {
                 p.sendMessage("§cParkur yok!");
                 return true;
             }
 
+            p.sendMessage("§e[3] JumpBlocks: §a" + session.getJumpBlocks().size());
+
             if (args.length < 3) {
+                p.sendMessage("§e[4] §cParametreler eksik!");
                 p.sendMessage("§cKullanım: /ap wolf <up|down> <blok>");
                 return true;
             }
 
-            try {
+            p.sendMessage("§e[5] §aParametreler OK!");
+            p.sendMessage("  §aDirection: " + args[1]);
+            p.sendMessage("  §aStep: " + args[2]);
 
+            p.sendMessage("§a✅ TEST BAŞARILI - DEVAM EDİLİYOR!");
+
+            // Burada sorun varsa aşağıdaki kod çalışmaz
+            try {
                 String direction = args[1];
                 int step = Integer.parseInt(args[2]);
-
-                List<Location> path = new ArrayList<>(session.getJumpBlocks());
-
-                if (path.size() < 2) {
-                    p.sendMessage("§cJumpBlock yok!");
-                    return true;
-                }
-
-                path.sort(Comparator.comparingInt(Location::getBlockY));
-
-                Location playerLoc = p.getLocation();
-
-                // en yakın nokta (SAĞLAM)
-                int currentIndex = 0;
-                double best = Double.MAX_VALUE;
-
-                for (int i = 0; i < path.size(); i++) {
-                    double d = path.get(i).distance(playerLoc);
-                    if (d < best) {
-                        best = d;
-                        currentIndex = i;
-                    }
-                }
-
-                int targetIndex;
-
-                if (direction.equalsIgnoreCase("up")) {
-                    targetIndex = Math.min(currentIndex + step, path.size() - 1);
-                } else {
-                    targetIndex = Math.max(currentIndex - step, 0);
-                }
-
-                if (targetIndex == currentIndex) {
-                    p.sendMessage("§cHedef yok!");
-                    return true;
-                }
-
-                Location target = path.get(targetIndex).clone().add(0.5, 1, 0.5);
-
-                Wolf wolf;
-
-                if (!session.hasWolf()) {
-                    wolf = p.getWorld().spawn(p.getLocation(), Wolf.class);
-                    wolf.setTamed(true);
-                    wolf.setOwner(p);
-                    wolf.setAI(false);
-                    wolf.setGravity(false);
-                    session.setWolf(wolf);
-                } else {
-                    wolf = session.getWolf();
-                }
-
-                Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
-                    wolf.addPassenger(p);
-                }, 2L);
-
-                new BukkitRunnable() {
-
-                    @Override
-                    public void run() {
-
-                        if (!p.isOnline() || !session.hasWolf()) {
-                            cancel();
-                            return;
-                        }
-
-                        Location wolfLoc = wolf.getLocation();
-
-                        double dist = wolfLoc.distance(target);
-
-                        // 🎯 hedefe ulaştı
-                        if (dist < 1.5) {
-
-                            session.setCurrentBlockIndex(targetIndex);
-                            session.dismountWolf(p);
-
-                            Bukkit.getScheduler().runTaskLater(manager.getPlugin(), session::removeWolf, 10L);
-
-                            p.sendMessage("§a✓ Kurt hedefe ulaştı!");
-                            cancel();
-                            return;
-                        }
-
-                        Vector dir = target.toVector()
-                                .subtract(wolfLoc.toVector())
-                                .normalize()
-                                .multiply(0.8);
-
-                        wolf.teleport(wolfLoc.add(dir));
-                    }
-
-                }.runTaskTimer(manager.getPlugin(), 0L, 1L);
-
-                p.sendMessage("§a🐺 Kurt hareket ediyor!");
-                return true;
-
+                p.sendMessage("§e[6] Parse işlemi başarılı!");
+                p.sendMessage("  Direction: " + direction);
+                p.sendMessage("  Step: " + step);
             } catch (Exception e) {
+                p.sendMessage("§c[ERROR] Parse hatası: " + e.getMessage());
                 e.printStackTrace();
-                p.sendMessage("§cHata: " + e.getMessage());
                 return true;
             }
+
+            p.sendMessage("§a✅✅ HERŞEY NORMAL GÖRÜNÜYORSemUzaktan Hata Yok!");
+            return true;
         }
 
         // AREA

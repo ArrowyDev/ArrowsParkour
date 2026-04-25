@@ -115,12 +115,18 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        if (session.hasWolf() && e.getDismounted().equals(session.getWolf())) {
+        if (session.hasWolf() && e.getDismounted() != null && e.getDismounted().equals(session.getWolf())) {
             e.setCancelled(true);
 
             Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
-                session.getWolf().addPassenger(p);
-            }, 1L);
+                if (session.hasWolf() && session.getWolf().isValid() && !p.isDead()) {
+                    try {
+                        if (!session.getWolf().getPassengers().contains(p)) {
+                            session.getWolf().addPassenger(p);
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }, 4L);
         }
     }
 

@@ -227,7 +227,7 @@ public class ParkourManager {
 
                 p.sendActionBar(actionBar);
             }
-        }, 0L, 2L); // 2L yaparak daha az sık update et
+        }, 0L, 2L);
     }
 
     public void createFullParkour(Player player) {
@@ -237,7 +237,7 @@ public class ParkourManager {
 
         ParkourSession session = new ParkourSession(player);
         session.setStartY(player.getLocation().getBlockY());
-        sessions.put(uuid, session);
+        sessions.put(uuid, session);  // ← Session'ı hemen kaydet
 
         World world = player.getWorld();
         Location loc = player.getLocation();
@@ -304,7 +304,7 @@ public class ParkourManager {
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
                 session.addBlock(block, Material.STONE);
-                session.addJumpBlock(block);
+                session.addJumpBlock(block);  // ← JumpBlock'u ekle
                 lastBlock = block;
 
                 currentX += dirArr[0];
@@ -325,6 +325,7 @@ public class ParkourManager {
         }
 
         plugin.getLogger().info("✓ Spiral platformları eklendi: " + MAX_STEPS + " step");
+        plugin.getLogger().info("✓ JumpBlocks sayısı: " + session.getJumpBlocks().size());  // ← DEBUG LOG
 
         FileConfiguration cfg = plugin.getConfig();
         cfg.set("parkours." + uuid + ".winX", lastBlock.getBlockX());
@@ -340,6 +341,7 @@ public class ParkourManager {
         saveParkourSession(uuid, session, baseX, baseZ, baseY);
 
         player.sendMessage("§aParkur oluşturuldu! (" + session.getAllBlocks().size() + " blok)");
+        player.sendMessage("§7JumpBlocks: " + session.getJumpBlocks().size() + " blok");  // ← DEBUG MSG
         player.sendMessage("§7+100 blok çık → her 100 blokta kazanırsın!");
         plugin.getLogger().info("✅ Parkur oluşturuldu: " + player.getName() + " - Toplam Blok: " + session.getAllBlocks().size());
     }
@@ -433,17 +435,14 @@ public class ParkourManager {
                 player.teleport(startLoc);
                 player.sendMessage("§eBaşlangıca ışınlandın!");
 
-                // Korumaları sıfırla
                 session.setForwardProtection(0);
                 session.setBackwardProtection(0);
 
-                // Win sayısını arttır
                 int currentWins = cfg.getInt(path, 0);
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
                 createOrUpdateBossBar(player);
 
-                // Clean old countdown
                 BukkitTask t = countdownTasks.remove(uuid);
                 if (t != null) t.cancel();
                 countdownSeconds.remove(uuid);

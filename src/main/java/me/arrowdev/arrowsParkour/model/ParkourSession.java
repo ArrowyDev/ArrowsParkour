@@ -93,7 +93,6 @@ public class ParkourSession {
         int nearestIndex = 0;
         double nearestDistance = Double.MAX_VALUE;
 
-        // Sadece parkour blokları ara (BARRIER değil)
         for (int i = 0; i < allBlocks.size(); i++) {
             Location loc = allBlocks.get(i);
             Material mat = blockMaterials.getOrDefault(
@@ -101,7 +100,6 @@ public class ParkourSession {
                     Material.STONE
             );
 
-            // BARRIER'ı (duvarları) skip et
             if (mat == Material.BARRIER) continue;
 
             double distance = playerLoc.distance(loc);
