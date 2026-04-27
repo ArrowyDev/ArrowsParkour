@@ -428,6 +428,7 @@ public class ParkourManager {
             Integer remaining = countdownSeconds.get(uuid);
             if (remaining == null) return;
 
+            // Oyuncu hareket etmediyse geri sayım başla
             if (remaining > 0) {
                 player.sendTitle("§6" + remaining, "§7Başlangıca ışınlanıyorsun...", 0, 20, 0);
                 countdownSeconds.put(uuid, remaining - 1);
@@ -435,14 +436,17 @@ public class ParkourManager {
                 player.teleport(startLoc);
                 player.sendMessage("§eBaşlangıca ışınlandın!");
 
+                // Korumaları sıfırla
                 session.setForwardProtection(0);
                 session.setBackwardProtection(0);
 
+                // Win sayısını arttır
                 int currentWins = cfg.getInt(path, 0);
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
                 createOrUpdateBossBar(player);
 
+                // Clean old countdown
                 BukkitTask t = countdownTasks.remove(uuid);
                 if (t != null) t.cancel();
                 countdownSeconds.remove(uuid);
@@ -458,8 +462,11 @@ public class ParkourManager {
 
         if (countdownTasks.containsKey(uuid)) {
             BukkitTask task = countdownTasks.remove(uuid);
-            task.cancel();
+            if (task != null) {
+                task.cancel();
+            }
             countdownSeconds.remove(uuid);
+            player.sendMessage("§cGeri sayım iptal edildi!");
         }
     }
 

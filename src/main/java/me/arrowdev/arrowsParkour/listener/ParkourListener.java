@@ -68,11 +68,8 @@ public class ParkourListener implements Listener {
 
         // Kurta bindiyse inmesini engelle
         if (session.hasWolf() && session.getWolf().getPassengers().contains(p)) {
-            if (p.isSneaking()) {
-                p.sendMessage("§cHedef bloğa ulaşana kadar kurttan inemezsin!");
-                event.setCancelled(true);
-                return;
-            }
+            event.setCancelled(true);
+            return;
         }
 
         int newBlockIndex = session.findNearestBlockIndex();
@@ -92,6 +89,7 @@ public class ParkourListener implements Listener {
             }
         }
 
+        // WIN CONTROL
         if (heightDifference >= 100) {
             int level = heightDifference / 100;
             Integer lastWinLvl = lastWinHeight.getOrDefault(uuid, -1);

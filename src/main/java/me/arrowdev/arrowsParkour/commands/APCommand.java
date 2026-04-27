@@ -2,6 +2,7 @@ package me.arrowdev.arrowsParkour.commands;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
+import me.arrowdev.arrowsParkour.task.WolfMovementTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -15,17 +16,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.Wolf;
 import org.bukkit.scheduler.BukkitScheduler;
-import java.util.Comparator;
-
-import java.util.List;
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-
 import org.bukkit.util.Vector;
 import org.bukkit.scheduler.BukkitRunnable;
-
-import static java.util.Locale.filter;
-import static java.util.stream.Collectors.toList;
+import java.util.List;
 
 public class APCommand implements CommandExecutor {
 
@@ -120,6 +113,8 @@ public class APCommand implements CommandExecutor {
                 session.setBackwardProtection(0);
             }
 
+            manager.cancelCountdown(p);
+
             int baseX = cfg.getInt(path + ".baseX");
             int baseZ = cfg.getInt(path + ".baseZ");
             int baseY = cfg.getInt(path + ".baseY");
@@ -161,6 +156,13 @@ public class APCommand implements CommandExecutor {
 
             p.teleport(tp);
             p.sendMessage("§6Zirveye ışınlandın!");
+
+            ParkourSession session = manager.getSession(p);
+            if (session != null) {
+                int heightDiff = (y + 1) - session.getStartY();
+                manager.startCountdownIfNeeded(p, heightDiff);
+            }
+
             return true;
         }
 
@@ -270,47 +272,104 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // ⭐ WOLF KOMUTU - TEST VERSİYON ⭐
+        // WOLF KOMUTU
         if (args[0].equalsIgnoreCase("wolf")) {
-            p.sendMessage("§e[1] Wolf komutu başladı!");
-
-            ParkourSession session = manager.getSession(p);
-            p.sendMessage("§e[2] Session: " + (session == null ? "§cNULL" : "§aOK"));
-
-            if (session == null) {
-                p.sendMessage("§cParkur yok!");
-                return true;
-            }
-
-            p.sendMessage("§e[3] JumpBlocks: §a" + session.getJumpBlocks().size());
-
             if (args.length < 3) {
-                p.sendMessage("§e[4] §cParametreler eksik!");
-                p.sendMessage("§cKullanım: /ap wolf <up|down> <blok>");
+                p.sendMessage("§cKullanım: /ap wolf <up|down> <blok-sayısı>");
                 return true;
             }
 
-            p.sendMessage("§e[5] §aParametreler OK!");
-            p.sendMessage("  §aDirection: " + args[1]);
-            p.sendMessage("  §aStep: " + args[2]);
-
-            p.sendMessage("§a✅ TEST BAŞARILI - DEVAM EDİLİYOR!");
-
-            // Burada sorun varsa aşağıdaki kod çalışmaz
             try {
-                String direction = args[1];
-                int step = Integer.parseInt(args[2]);
-                p.sendMessage("§e[6] Parse işlemi başarılı!");
-                p.sendMessage("  Direction: " + direction);
-                p.sendMessage("  Step: " + step);
-            } catch (Exception e) {
-                p.sendMessage("§c[ERROR] Parse hatası: " + e.getMessage());
-                e.printStackTrace();
+                String direction = args[1].toLowerCase();
+                int blockCount = Integer.parseInt(args[2]);
+
+                if (blockCount <= 0) {
+                    p.sendMessage("§cBlok sayısı 0'dan büyük olmalı!");
+                    return true;
+                }
+
+                if (!direction.equals("up") && !direction.equals("down")) {
+                    p.sendMessage("§cYönerge 'up' ya da 'down' olmalı!");
+                    return true;
+                }
+
+                ParkourSession session = manager.getSession(p);
+                if (session == null) {
+                    p.sendMessage("§cParkurun yok!");
+                    return true;
+                }
+
+                java.util.List<Location> jumpBlocks = session.getJumpBlocks();
+                if (jumpBlocks.isEmpty()) {
+                    p.sendMessage("§cJumpBlock listesi boş!");
+                    return true;
+                }
+
+                // En yakın jumpblock'u bul
+                Location playerLoc = p.getLocation();
+                int currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
+
+                // Hedef blok indeksini belirle
+                int targetBlockIndex;
+                if (direction.equals("up")) {
+                    targetBlockIndex = Math.min(currentBlockIndex + blockCount, jumpBlocks.size() - 1);
+                } else {
+                    targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
+                }
+
+                if (targetBlockIndex == currentBlockIndex) {
+                    p.sendMessage("§cHedef bloğa ulaşılamadı!");
+                    return true;
+                }
+
+                // Hedef konum
+                Location targetBlock = jumpBlocks.get(targetBlockIndex);
+                Location targetLoc = targetBlock.clone().add(0.5, 1.2, 0.5);
+
+                manager.getPlugin().getLogger().info("🐺 Wolf komutu başladı!");
+                manager.getPlugin().getLogger().info("   Mevcut: " + currentBlockIndex + " → Hedef: " + targetBlockIndex);
+                manager.getPlugin().getLogger().info("   Hedef konum: " + targetLoc);
+
+                // Kurt oluştur
+                if (!session.hasWolf()) {
+                    Wolf wolf = p.getWorld().spawn(p.getLocation(), Wolf.class);
+                    wolf.setOwner(p);
+                    wolf.setTamed(true);
+
+                    // ✅ DOĞRU AYARLAR
+                    wolf.setAI(true);
+                    wolf.setGravity(true);
+                    wolf.setInvulnerable(true);
+                    wolf.setCollidable(false);
+
+                    session.setWolf(wolf);
+                    manager.getPlugin().getLogger().info("✓ Kurt spawn edildi!");
+                }
+
+                Wolf wolf = session.getWolf();
+
+                // Oyuncuyu kurta bind et
+                Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
+                    try {
+                        wolf.addPassenger(p);
+                        manager.getPlugin().getLogger().info("✓ Oyuncu kurta bindirildi!");
+                    } catch (Exception e) {
+                        manager.getPlugin().getLogger().warning("❌ Bind hatası: " + e.getMessage());
+                    }
+                }, 1L);
+
+                // Hareket task'ını başlat
+                new WolfMovementTask(manager.getPlugin(), p, wolf, session, targetLoc, targetBlockIndex)
+                        .runTaskTimer(manager.getPlugin(), 0L, 1L);
+
+                p.sendMessage("§a🐺 Kurt oluşturuldu! " + blockCount + " blok " +
+                        (direction.equals("up") ? "yukarı" : "aşağı") + " gidiyoruz...");
+                return true;
+
+            } catch (NumberFormatException e) {
+                p.sendMessage("§cGeçerli bir sayı gir!");
                 return true;
             }
-
-            p.sendMessage("§a✅✅ HERŞEY NORMAL GÖRÜNÜYORSemUzaktan Hata Yok!");
-            return true;
         }
 
         // AREA
@@ -420,20 +479,11 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                int backwardBefore = session.getBackwardProtection();
                 session.addForwardProtection(amount);
-                int backwardAfter = session.getBackwardProtection();
-                int forwardAmount = session.getForwardProtection();
-
                 p.sendMessage("§a✓ " + amount + " ileri koruma eklendi!");
-
-                if (backwardBefore > backwardAfter) {
-                    p.sendMessage("§7Geri korumasından §c" + (backwardBefore - backwardAfter) + " §7düşüldü!");
-                }
-
                 p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
 
-                manager.getPlugin().getLogger().info("✅ " + p.getName() + " ileri koruma: +" + amount + " (İleri: " + forwardAmount + ", Geri: " + backwardAfter + ")");
+                manager.getPlugin().getLogger().info("✅ " + p.getName() + " ileri koruma: +" + amount);
                 return true;
             } catch (NumberFormatException e) {
                 p.sendMessage("§cGeçerli bir sayı gir!");
@@ -461,20 +511,11 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                int forwardBefore = session.getForwardProtection();
                 session.addBackwardProtection(amount);
-                int forwardAfter = session.getForwardProtection();
-                int backwardAmount = session.getBackwardProtection();
-
                 p.sendMessage("§c✓ " + amount + " geri koruma eklendi!");
-
-                if (forwardBefore > forwardAfter) {
-                    p.sendMessage("§7İleri korumasından §a" + (forwardBefore - forwardAfter) + " §7düşüldü!");
-                }
-
                 p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
 
-                manager.getPlugin().getLogger().info("✅ " + p.getName() + " geri koruma: +" + amount + " (İleri: " + forwardAfter + ", Geri: " + backwardAmount + ")");
+                manager.getPlugin().getLogger().info("✅ " + p.getName() + " geri koruma: +" + amount);
                 return true;
             } catch (NumberFormatException e) {
                 p.sendMessage("§cGeçerli bir sayı gir!");
@@ -514,15 +555,7 @@ public class APCommand implements CommandExecutor {
                 target = p.getServer().getPlayer(args[1]);
                 if (target != null) {
                     displayName = target.getName();
-                    p.sendMessage("§e" + target.getName() + "§a'ya TNT gönderildi!");
-                    target.sendMessage("§c" + p.getName() + "§e sana TNT gönderdi!");
-                } else {
-                    displayName = args[1];
-                    p.sendMessage("§e" + displayName + "§a ismiyle TNT gönderildi!");
                 }
-            } else {
-                displayName = generateRandomName();
-                p.sendMessage("§aRastgele isimle TNT gönderildi!");
             }
 
             Location tntLoc;
@@ -568,5 +601,23 @@ public class APCommand implements CommandExecutor {
                 "testuser1","testuser2","testuser","arrowtesttnt"
         };
         return randomNames[(int) (Math.random() * randomNames.length)];
+    }
+
+    private int findNearestBlockIndex(Location playerLoc, java.util.List<Location> jumpBlocks) {
+        int nearestIndex = 0;
+        double minDistance = Double.MAX_VALUE;
+
+        for (int i = 0; i < jumpBlocks.size(); i++) {
+            Location jb = jumpBlocks.get(i);
+            double dx = playerLoc.getX() - jb.getX();
+            double dz = playerLoc.getZ() - jb.getZ();
+            double dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist < minDistance) {
+                minDistance = dist;
+                nearestIndex = i;
+            }
+        }
+
+        return nearestIndex;
     }
 }
