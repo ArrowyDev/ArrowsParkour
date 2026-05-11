@@ -28,6 +28,31 @@ public class ParkourManager {
 
     private final Map<UUID, BossBar> bossBars = new HashMap<>();
 
+    // 🟢 DÜZELTİLDİ: Artık doğrudan oyuncunun config'deki kayıtlı dünyasına bakıyor!
+    public boolean isInParkourWorld(Player player) {
+        UUID uuid = player.getUniqueId();
+        FileConfiguration cfg = plugin.getConfig();
+
+        // Oyuncunun parkur verisindeki "world" kısmını okuyoruz
+        String worldName = cfg.getString("parkours." + uuid + ".world");
+
+        // Eğer oyuncunun henüz bir parkoru yoksa veya dünya silinmişse false döndür
+        if (worldName == null || worldName.isEmpty()) {
+            return false;
+        }
+
+        // Oyuncunun bulunduğu dünya, configdeki dünyayla aynı mı?
+        return player.getWorld().getName().equals(worldName);
+    }
+
+    public void hideBossBar(Player player) {
+        UUID uuid = player.getUniqueId();
+        BossBar bar = bossBars.get(uuid);
+        if (bar != null) {
+            bar.setVisible(false);
+        }
+    }
+
     public void createOrUpdateBossBar(Player player) {
         UUID uuid = player.getUniqueId();
         FileConfiguration cfg = plugin.getConfig();
@@ -47,6 +72,7 @@ public class ParkourManager {
             bossBars.put(uuid, bar);
         } else {
             bar.setTitle("§6Win: §a" + wins);
+            bar.setVisible(true);
         }
     }
 
@@ -199,6 +225,9 @@ public class ParkourManager {
     public void startActionBarTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
+                // Doğru dünyada değilse ActionBar GÖNDERME
+                if (!isInParkourWorld(p)) continue;
+
                 ParkourSession session = getSession(p);
                 if (session == null) continue;
 
@@ -237,7 +266,7 @@ public class ParkourManager {
 
         ParkourSession session = new ParkourSession(player);
         session.setStartY(player.getLocation().getBlockY());
-        sessions.put(uuid, session);  // ← Session'ı hemen kaydet
+        sessions.put(uuid, session);
 
         World world = player.getWorld();
         Location loc = player.getLocation();
@@ -304,7 +333,7 @@ public class ParkourManager {
                 Location block = new Location(world, baseX + currentX, y, baseZ + currentZ);
                 block.getBlock().setType(Material.STONE);
                 session.addBlock(block, Material.STONE);
-                session.addJumpBlock(block);  // ← JumpBlock'u ekle
+                session.addJumpBlock(block);
                 lastBlock = block;
 
                 currentX += dirArr[0];
@@ -325,7 +354,7 @@ public class ParkourManager {
         }
 
         plugin.getLogger().info("✓ Spiral platformları eklendi: " + MAX_STEPS + " step");
-        plugin.getLogger().info("✓ JumpBlocks sayısı: " + session.getJumpBlocks().size());  // ← DEBUG LOG
+        plugin.getLogger().info("✓ JumpBlocks sayısı: " + session.getJumpBlocks().size());
 
         FileConfiguration cfg = plugin.getConfig();
         cfg.set("parkours." + uuid + ".winX", lastBlock.getBlockX());
@@ -341,7 +370,7 @@ public class ParkourManager {
         saveParkourSession(uuid, session, baseX, baseZ, baseY);
 
         player.sendMessage("§aParkur oluşturuldu! (" + session.getAllBlocks().size() + " blok)");
-        player.sendMessage("§7JumpBlocks: " + session.getJumpBlocks().size() + " blok");  // ← DEBUG MSG
+        player.sendMessage("§7JumpBlocks: " + session.getJumpBlocks().size() + " blok");
         player.sendMessage("§7+100 blok çık → her 100 blokta kazanırsın!");
         plugin.getLogger().info("✅ Parkur oluşturuldu: " + player.getName() + " - Toplam Blok: " + session.getAllBlocks().size());
     }
@@ -378,7 +407,6 @@ public class ParkourManager {
         }
 
         cfg.set("parkours." + uuid + ".jumpBlocks", jumpList);
-
         cfg.set("parkours." + uuid + ".blocks", blockLocations);
         plugin.saveConfig();
 
@@ -428,7 +456,6 @@ public class ParkourManager {
             Integer remaining = countdownSeconds.get(uuid);
             if (remaining == null) return;
 
-            // Oyuncu hareket etmediyse geri sayım başla
             if (remaining > 0) {
                 player.sendTitle("§6" + remaining, "§7Başlangıca ışınlanıyorsun...", 0, 20, 0);
                 countdownSeconds.put(uuid, remaining - 1);
@@ -436,17 +463,14 @@ public class ParkourManager {
                 player.teleport(startLoc);
                 player.sendMessage("§eBaşlangıca ışınlandın!");
 
-                // Korumaları sıfırla
                 session.setForwardProtection(0);
                 session.setBackwardProtection(0);
 
-                // Win sayısını arttır
                 int currentWins = cfg.getInt(path, 0);
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
                 createOrUpdateBossBar(player);
 
-                // Clean old countdown
                 BukkitTask t = countdownTasks.remove(uuid);
                 if (t != null) t.cancel();
                 countdownSeconds.remove(uuid);

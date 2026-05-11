@@ -16,10 +16,10 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent; // 🟢 YENİ IMPORT
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-
 
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
@@ -32,14 +32,30 @@ public class ParkourListener implements Listener {
         this.lastDisplayHeight = new java.util.HashMap<>();
     }
 
+    // 🟢 YENİ: Dünya değişimini yakalar
+    @EventHandler
+    public void onWorldChange(PlayerChangedWorldEvent event) {
+        Player p = event.getPlayer();
+
+        if (manager.isInParkourWorld(p)) {
+            manager.createOrUpdateBossBar(p);
+        } else {
+            manager.hideBossBar(p);
+            manager.cancelCountdown(p);
+        }
+    }
+
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player p = event.getPlayer();
-
         manager.onPlayerJoin(p);
 
         Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
-            manager.createOrUpdateBossBar(p);
+            if (manager.isInParkourWorld(p)) {
+                manager.createOrUpdateBossBar(p);
+            } else {
+                manager.hideBossBar(p);
+            }
         }, 20L);
     }
 
@@ -51,6 +67,10 @@ public class ParkourListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player p = event.getPlayer();
+
+        // 🟢 YENİ: Parkur dünyasında değilse işlemi iptal et
+        if (!manager.isInParkourWorld(p)) return;
+
         Location to = event.getTo();
         if (to == null) return;
 
@@ -66,7 +86,6 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        // Kurta bindiyse inmesini engelle
         if (session.hasWolf() && session.getWolf().getPassengers().contains(p)) {
             event.setCancelled(true);
             return;
@@ -89,7 +108,6 @@ public class ParkourListener implements Listener {
             }
         }
 
-        // WIN CONTROL
         if (heightDifference >= 100) {
             int level = heightDifference / 100;
             Integer lastWinLvl = lastWinHeight.getOrDefault(uuid, -1);
@@ -132,6 +150,9 @@ public class ParkourListener implements Listener {
     public void onJump(PlayerMoveEvent e) {
         Player p = e.getPlayer();
 
+        // 🟢 YENİ: Parkur dünyasında değilse işlemi iptal et
+        if (!manager.isInParkourWorld(p)) return;
+
         if (manager.isFrozen(p)) {
             if (e.getFrom().getY() < e.getTo().getY()) {
                 e.setTo(e.getFrom());
@@ -142,8 +163,11 @@ public class ParkourListener implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
-        Block block = event.getBlock();
 
+        // 🟢 YENİ: Başka dünyada blok kırarken eklenti karışmasın
+        if (!manager.isInParkourWorld(p)) return;
+
+        Block block = event.getBlock();
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
@@ -164,8 +188,11 @@ public class ParkourListener implements Listener {
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
         Player p = event.getPlayer();
-        Block block = event.getBlock();
 
+        // 🟢 YENİ: Başka dünyada blok koyarken eklenti karışmasın
+        if (!manager.isInParkourWorld(p)) return;
+
+        Block block = event.getBlock();
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
