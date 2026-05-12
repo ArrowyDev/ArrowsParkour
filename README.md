@@ -2,6 +2,8 @@
 
 <h1>🏹 Arrow's Parkour</h1>
 
+<img src="https://github.com/ArrowyDev/ArrowsParkour/blob/main/banner.png">
+
 <img src="https://img.shields.io/badge/Minecraft-Plugin-green?style=for-the-badge">
 <img src="https://img.shields.io/badge/Status-Development-orange?style=for-the-badge">
 <img src="https://img.shields.io/badge/Version-Alpha-red?style=for-the-badge">
@@ -50,6 +52,7 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap gke <amount>` `playerName` → adds backward protection
 - `/ap prot[clear]` → shows the current protections status/clear prot status
 - `/ap dontmove <amount>` `playerName` → restricts movement for a certain period of time
+- `/ap wolf up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
 
 ---
 
@@ -78,7 +81,7 @@ This system allows streamers to create interactive and chaotic parkour gameplay 
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
+- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
 - `/ap prison <amount>` `PLAYERNAME` → the prison system
 
 ---
@@ -131,6 +134,7 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap gke <amount>` `playerName` → geri koruma ekler
 - `/ap prot[clear]` → mevcut koruma durumunu gösterir/mevcut koruma durumunu temizler
 - `/ap dontmove <amount>` `playerName` → belirtilen süre boyunca hareketi kısıtlar
+- `/ap wolf up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
   
 ---
 
@@ -159,7 +163,7 @@ Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli h
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
+- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
 - `/ap prison <amount>` `PLAYERNAME` → hapis sistemi
 
 ---
