@@ -307,7 +307,7 @@ public class APCommand implements CommandExecutor {
 
                 Location playerLoc = p.getLocation();
 
-                // 🟢 BAŞLANGIÇ ZEMİNİ KONTROLÜ
+                // Başlangıç zemini kontrolü
                 boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6);
 
                 int currentBlockIndex;
@@ -315,30 +315,41 @@ public class APCommand implements CommandExecutor {
                 int targetBlockIndex;
 
                 if (isOnBaseGround) {
-                    // 🟢 BAŞLANGIÇTA: 1. bloğa ışınla, ondan sonra (blockCount - 1) ilerle
-                    // Çünkü 1. bloğa ışınlanmak zaten 1 ilerleme sayılır
+                    // =====================================================
+                    // BAŞLANGIÇ DURUMU:
+                    // Oyuncu 1. bloğa işınlanır → mevcut sistem korunur
+                    // Target = blockCount (wolf 1'den blockCount'a gider = blockCount-1 adım)
+                    // Toplam: 1 (ışınlama) + (blockCount-1) (hareket) = blockCount ✓
+                    // =====================================================
                     currentBlockIndex = 0;
                     Location firstBlock = jumpBlocks.get(0).clone().add(0.5, 1.0, 0.5);
                     p.teleport(firstBlock);
                     p.sendMessage("§a🐺 Başlangıçtan 1. bloğa ışınlandınız.");
                     wolfSpawnLoc = firstBlock;
 
-                    // Hedef: 0 + blockCount = blockCount. blok
-                    // Örnek: blockCount=10 → 10. blokta durur (1+9 mantığı)
                     if (direction.equals("up")) {
                         targetBlockIndex = Math.min(blockCount, jumpBlocks.size() - 1);
                     } else {
                         targetBlockIndex = 0;
                     }
+
                 } else {
-                    // 🟢 ZATEN PARKURDAYSA: Bulunduğu yerden tam blockCount kadar ilerle
+                    // =====================================================
+                    // ★ DÜZELTİLDİ: PARKUR ÜZERİNDE DURUM
+                    // Wolf başladığında zaten üzerinde olduğu bloğu
+                    // "vardım" sayarak atladığı için +1 ekliyoruz.
+                    // Bu sayede net ilerleme tam blockCount kadar olur.
+                    // =====================================================
                     currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
                     wolfSpawnLoc = p.getLocation();
 
                     if (direction.equals("up")) {
-                        targetBlockIndex = Math.min(currentBlockIndex + blockCount, jumpBlocks.size() - 1);
+                        // ★ DEĞİŞİKLİK: blockCount → blockCount + 1
+                        targetBlockIndex = Math.min(currentBlockIndex + blockCount + 1, jumpBlocks.size() - 1);
                     } else {
-                        targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
+                        // Geri giderken de aynı mantık: -blockCount - 1
+                        // Ama 0'ın altına düşmemeli
+                        targetBlockIndex = Math.max(currentBlockIndex - blockCount - 1, 0);
                     }
                 }
 
@@ -410,7 +421,7 @@ public class APCommand implements CommandExecutor {
                 p.sendMessage("§aArea düzenlemesi AÇILDI! Blokları kırıp koya bilirsin.");
                 manager.getPlugin().getLogger().info("🔓 " + p.getName() + " area düzenlemesini açtı");
             } else {
-                p.sendMessage("§cArea düzenlemesi KAPANDI! Blokları kıramayacaksın.");
+                p.sendMessage("§cArea düzenlemesi KAPANDI! Blokları kıramazsın.");
                 manager.getPlugin().getLogger().info("🔐 " + p.getName() + " area düzenlemesini kapattı - kaydediliyor...");
 
                 FileConfiguration cfg = manager.getPlugin().getConfig();
@@ -552,8 +563,8 @@ public class APCommand implements CommandExecutor {
             if (args.length > 1 && args[1].equalsIgnoreCase("clear")) {
                 session.setForwardProtection(0);
                 session.setBackwardProtection(0);
-                p.sendMessage("§4✓ Tüm korumalanız temizlendi!");
-                manager.getPlugin().getLogger().info("🗑️ " + p.getName() + " korumalanını temizledi");
+                p.sendMessage("§4✓ Tüm korumalar temizlendi!");
+                manager.getPlugin().getLogger().info("🗑️ " + p.getName() + " korumalarını temizledi");
                 return true;
             }
 
@@ -614,15 +625,11 @@ public class APCommand implements CommandExecutor {
         return true;
     }
 
-    // 🟢 DÜZELTİLDİ: Artık sadece X,Z değil tam 3D (X, Y, Z) mesafesini kontrol ediyor!
-    // 🟢 KESİN ÇÖZÜM: Oyuncunun ayağının altındaki bloğa bakar, %100 doğru index bulur
     private int findNearestBlockIndex(Location playerLoc, List<Location> jumpBlocks) {
-        // Oyuncunun ayağının tam altındaki blok koordinatları
         int bx = playerLoc.getBlockX();
         int by = playerLoc.getBlockY() - 1;
         int bz = playerLoc.getBlockZ();
 
-        // Önce tam eşleşme ara (oyuncu o bloğun üzerindeyse direkt o index)
         for (int i = 0; i < jumpBlocks.size(); i++) {
             Location jb = jumpBlocks.get(i);
             if (jb.getBlockX() == bx && jb.getBlockY() == by && jb.getBlockZ() == bz) {
@@ -630,7 +637,6 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // Bulamazsa Y öncelikli en yakını ara (Y'ye 10x ağırlık)
         int nearestIndex = 0;
         double minDistance = Double.MAX_VALUE;
 
@@ -641,7 +647,6 @@ public class APCommand implements CommandExecutor {
             double dx = playerLoc.getX() - (jb.getX() + 0.5);
             double dz = playerLoc.getZ() - (jb.getZ() + 0.5);
 
-            // Y eksenine 10x ağırlık vererek aynı yükseklikteki bloğu önceliklendir
             double dist = Math.sqrt(dx * dx + dz * dz) + (dy * 10);
 
             if (dist < minDistance) {

@@ -3,14 +3,14 @@ package me.arrowdev.arrowsParkour.manager;
 import me.arrowdev.arrowsParkour.ArrowsParkour;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.*;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
-
-import org.bukkit.boss.BossBar;
-import org.bukkit.boss.BarColor;
-import org.bukkit.boss.BarStyle;
 
 import java.util.*;
 
@@ -28,22 +28,56 @@ public class ParkourManager {
 
     private final Map<UUID, BossBar> bossBars = new HashMap<>();
 
-    // 🟢 DÜZELTİLDİ: Artık doğrudan oyuncunun config'deki kayıtlı dünyasına bakıyor!
+    // =====================================================================
+    // DÜNYA KONTROL METHODları
+    // =====================================================================
+
+    /**
+     * Oyuncunun kendi parkur dünyasında olup olmadığını kontrol eder.
+     * Config'deki "parkours.<uuid>.world" değeriyle karşılaştırır.
+     */
     public boolean isInParkourWorld(Player player) {
         UUID uuid = player.getUniqueId();
         FileConfiguration cfg = plugin.getConfig();
 
-        // Oyuncunun parkur verisindeki "world" kısmını okuyoruz
         String worldName = cfg.getString("parkours." + uuid + ".world");
 
-        // Eğer oyuncunun henüz bir parkoru yoksa veya dünya silinmişse false döndür
         if (worldName == null || worldName.isEmpty()) {
             return false;
         }
 
-        // Oyuncunun bulunduğu dünya, configdeki dünyayla aynı mı?
         return player.getWorld().getName().equals(worldName);
     }
+
+    /**
+     * ★ YENİ METHOD ★
+     * Verilen World nesnesinin herhangi bir oyuncunun parkur dünyası
+     * olup olmadığını kontrol eder.
+     * EntityExplodeEvent gibi Player içermeyen event'lerde kullanılır.
+     */
+    public boolean isParkourWorld(World world) {
+        if (world == null) return false;
+
+        FileConfiguration cfg = plugin.getConfig();
+        ConfigurationSection parkourSection = cfg.getConfigurationSection("parkours");
+
+        // Config'de hiç parkur kaydı yoksa false döndür
+        if (parkourSection == null) return false;
+
+        // Tüm kayıtlı oyuncuların parkur dünyalarını kontrol et
+        for (String uuidStr : parkourSection.getKeys(false)) {
+            String savedWorld = cfg.getString("parkours." + uuidStr + ".world");
+            if (savedWorld != null && savedWorld.equals(world.getName())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // =====================================================================
+    // BOSS BAR METHODları
+    // =====================================================================
 
     public void hideBossBar(Player player) {
         UUID uuid = player.getUniqueId();
@@ -85,6 +119,10 @@ public class ParkourManager {
         }
     }
 
+    // =====================================================================
+    // FREEZE METHODları
+    // =====================================================================
+
     public void freezePlayer(Player player, int seconds) {
         UUID uuid = player.getUniqueId();
 
@@ -116,6 +154,10 @@ public class ParkourManager {
         return true;
     }
 
+    // =====================================================================
+    // CONSTRUCTOR & INIT
+    // =====================================================================
+
     public ParkourManager(ArrowsParkour plugin) {
         this.plugin = plugin;
         this.sessions = new HashMap<>();
@@ -136,6 +178,10 @@ public class ParkourManager {
             loadedPlayers.add(uuid);
         }
     }
+
+    // =====================================================================
+    // PARKUR YÜKLEME
+    // =====================================================================
 
     private void loadPlayerParkour(UUID uuid, Player player) {
         FileConfiguration cfg = plugin.getConfig();
@@ -222,10 +268,13 @@ public class ParkourManager {
         }
     }
 
+    // =====================================================================
+    // ACTION BAR
+    // =====================================================================
+
     public void startActionBarTask() {
         Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
-                // Doğru dünyada değilse ActionBar GÖNDERME
                 if (!isInParkourWorld(p)) continue;
 
                 ParkourSession session = getSession(p);
@@ -258,6 +307,10 @@ public class ParkourManager {
             }
         }, 0L, 2L);
     }
+
+    // =====================================================================
+    // PARKUR OLUŞTURMA
+    // =====================================================================
 
     public void createFullParkour(Player player) {
         UUID uuid = player.getUniqueId();
@@ -375,6 +428,10 @@ public class ParkourManager {
         plugin.getLogger().info("✅ Parkur oluşturuldu: " + player.getName() + " - Toplam Blok: " + session.getAllBlocks().size());
     }
 
+    // =====================================================================
+    // KAYDETME
+    // =====================================================================
+
     public void saveParkourSession(UUID uuid, ParkourSession session, int baseX, int baseZ, int baseY) {
         FileConfiguration cfg = plugin.getConfig();
 
@@ -414,6 +471,10 @@ public class ParkourManager {
         plugin.getLogger().info("  📊 Stone: " + stoneCount + ", Barrier: " + barrierCount + ", Diğer: " + otherCount);
         plugin.getLogger().info("  📝 Toplam blok: " + blockLocations.size());
     }
+
+    // =====================================================================
+    // SESSION / COUNTDOWN
+    // =====================================================================
 
     public ParkourSession getSession(Player player) {
         return sessions.get(player.getUniqueId());
@@ -494,6 +555,10 @@ public class ParkourManager {
         }
     }
 
+    // =====================================================================
+    // PARKUR TEMİZLEME
+    // =====================================================================
+
     public void clearParkourCompletely(Player player) {
         UUID uuid = player.getUniqueId();
 
@@ -521,6 +586,10 @@ public class ParkourManager {
         clearParkourCompletely(player);
         player.sendMessage("§eParkur temizlendi!");
     }
+
+    // =====================================================================
+    // SAVE / LOAD ALL
+    // =====================================================================
 
     public void saveAll() {
         FileConfiguration cfg = plugin.getConfig();

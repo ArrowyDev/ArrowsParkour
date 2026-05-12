@@ -23,8 +23,6 @@ public class WolfMovementTask extends BukkitRunnable {
     private int ticks = 0;
     private static final int MAX_TICKS = 1200; // 60 saniye timeout
 
-    // 🟢 DÜZELTİLDİ: Varış mesafesi 0.45'ten 0.3'e düşürüldü.
-    // Artık kurt hedefe çok daha yaklaşmadan "vardım" demeyecek.
     private static final double ARRIVAL_DISTANCE = 0.3;
 
     public WolfMovementTask(ArrowsParkour plugin, Player player, Wolf wolf,
@@ -56,27 +54,22 @@ public class WolfMovementTask extends BukkitRunnable {
             return;
         }
 
-        // Hedefe ulaştık mı?
         if (currentIndex >= targetIndex) {
             finish();
             cancel();
             return;
         }
 
-        // Mevcut takip edilen hedef blok
         Location currentTarget = jumpBlocks.get(currentIndex).clone().add(0.5, 1.2, 0.5);
         double distance = wolf.getLocation().distance(currentTarget);
 
-        // Bloğa yeterince yaklaştıysa sıradakine geç
         if (distance < ARRIVAL_DISTANCE) {
             currentIndex++;
             return;
         }
 
-        // Kurdu yumuşakça hareket ettir
         moveToward(currentTarget);
 
-        // Herhangi bir sebeple oyuncu binekten indiyse geri bindir
         if (!wolf.getPassengers().contains(player)) {
             wolf.addPassenger(player);
         }
@@ -96,9 +89,12 @@ public class WolfMovementTask extends BukkitRunnable {
 
         double hDist = Math.sqrt(dx * dx + dz * dz);
 
-        // 🟢 DÜZELTİLDİ: Hedefe yaklaşınca daha fazla yavaşla (0.35 -> 0.25)
-        // Bu sayede hedefin önünde savrulmayı önler.
-        double speed = Math.min(0.25, hDist * 0.4);
+        // =====================================================
+        // ★ HIZ AYARI BURADA ★
+        // Maksimum yatay hızı 0.25'ten 0.35'e çıkardık.
+        // Hızlanma faktörünü 0.4'ten 0.5'e çıkardık.
+        // =====================================================
+        double speed = Math.min(0.35, hDist * 0.5);
 
         double vx = 0, vz = 0;
         if (hDist > 0.01) {
@@ -106,28 +102,24 @@ public class WolfMovementTask extends BukkitRunnable {
             vz = (dz / hDist) * speed;
         }
 
-        // Dikey hareketi de biraz daha hassas yaptık
-        double vy = Math.max(-0.15, Math.min(0.2, dy * 0.4));
+        // =====================================================
+        // ★ DİKEY HIZ AYARI BURADA ★
+        // Maksimum dikey hızı 0.2'den 0.3'e çıkardık.
+        // =====================================================
+        double vy = Math.max(-0.2, Math.min(0.3, dy * 0.5));
 
         wolf.setVelocity(new Vector(vx, vy, vz));
 
-        // Kurdu hedefe doğru baktır
         Location face = wolfLoc.clone();
         face.setDirection(target.toVector().subtract(wolfLoc.toVector()));
         wolf.teleport(face);
     }
 
     private void finish() {
-        // 🟢 DÜZELTİLDİ: Son duruş noktası optimize edildi.
-        // Y ekseni 1.1'den 0.8'e çekildi, böylece bloğun tam üzerine oturur.
         Location finalTarget = jumpBlocks.get(targetIndex).clone().add(0.5, 0.8, 0.5);
-
-        // Son konuma direkt ışınla (kaymayı önlemek için)
         wolf.teleport(finalTarget);
-
         player.sendMessage("§a✓ Hedefe başarıyla ulaştınız!");
 
-        // Oyuncuyu indirip kurdu kaldır
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             session.dismountWolf(player);
             plugin.getServer().getScheduler().runTaskLater(plugin, session::removeWolf, 8L);
@@ -142,7 +134,6 @@ public class WolfMovementTask extends BukkitRunnable {
     }
 
     private int findNearestIndex(Location loc) {
-        // Ayağın altındaki bloğu kontrol et
         int bx = loc.getBlockX();
         int by = loc.getBlockY() - 1;
         int bz = loc.getBlockZ();
@@ -154,7 +145,6 @@ public class WolfMovementTask extends BukkitRunnable {
             }
         }
 
-        // Bulamazsa Y öncelikli en yakın
         int nearest = 0;
         double minDist = Double.MAX_VALUE;
 
@@ -171,5 +161,5 @@ public class WolfMovementTask extends BukkitRunnable {
             }
         }
         return nearest;
-    }//s
+    }
 }

@@ -16,23 +16,30 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent; // 🟢 YENİ IMPORT
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
-    private final java.util.Map<java.util.UUID, Integer> lastWinHeight;
-    private final java.util.Map<java.util.UUID, Integer> lastDisplayHeight;
+    private final Map<UUID, Integer> lastWinHeight;
+    private final Map<UUID, Integer> lastDisplayHeight;
 
     public ParkourListener(ParkourManager manager) {
         this.manager = manager;
-        this.lastWinHeight = new java.util.HashMap<>();
-        this.lastDisplayHeight = new java.util.HashMap<>();
+        this.lastWinHeight = new HashMap<>();
+        this.lastDisplayHeight = new HashMap<>();
     }
 
-    // 🟢 YENİ: Dünya değişimini yakalar
+    // =====================================================================
+    // DÜNYA DEĞİŞİMİ
+    // =====================================================================
+
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Player p = event.getPlayer();
@@ -44,6 +51,10 @@ public class ParkourListener implements Listener {
             manager.cancelCountdown(p);
         }
     }
+
+    // =====================================================================
+    // GİRİŞ / ÇIKIŞ
+    // =====================================================================
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
@@ -64,11 +75,14 @@ public class ParkourListener implements Listener {
         manager.removeBossBar(e.getPlayer());
     }
 
+    // =====================================================================
+    // HAREKET
+    // =====================================================================
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
         Player p = event.getPlayer();
 
-        // 🟢 YENİ: Parkur dünyasında değilse işlemi iptal et
         if (!manager.isInParkourWorld(p)) return;
 
         Location to = event.getTo();
@@ -76,7 +90,6 @@ public class ParkourListener implements Listener {
 
         if (manager.isFrozen(p)) {
             Location from = event.getFrom();
-            if (to == null) return;
             to.setX(from.getX());
             to.setZ(from.getZ());
             event.setTo(to);
@@ -97,7 +110,7 @@ public class ParkourListener implements Listener {
         int currentY = to.getBlockY();
         int startY = session.getStartY();
         int heightDifference = currentY - startY;
-        java.util.UUID uuid = p.getUniqueId();
+        UUID uuid = p.getUniqueId();
 
         int lastHeight = lastDisplayHeight.getOrDefault(uuid, 0);
         if (heightDifference != lastHeight) {
@@ -150,7 +163,6 @@ public class ParkourListener implements Listener {
     public void onJump(PlayerMoveEvent e) {
         Player p = e.getPlayer();
 
-        // 🟢 YENİ: Parkur dünyasında değilse işlemi iptal et
         if (!manager.isInParkourWorld(p)) return;
 
         if (manager.isFrozen(p)) {
@@ -160,11 +172,14 @@ public class ParkourListener implements Listener {
         }
     }
 
+    // =====================================================================
+    // BLOK KIRMA / KOYMA
+    // =====================================================================
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
 
-        // 🟢 YENİ: Başka dünyada blok kırarken eklenti karışmasın
         if (!manager.isInParkourWorld(p)) return;
 
         Block block = event.getBlock();
@@ -189,7 +204,6 @@ public class ParkourListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         Player p = event.getPlayer();
 
-        // 🟢 YENİ: Başka dünyada blok koyarken eklenti karışmasın
         if (!manager.isInParkourWorld(p)) return;
 
         Block block = event.getBlock();
@@ -209,14 +223,23 @@ public class ParkourListener implements Listener {
         manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
     }
 
+    // =====================================================================
+    // ★ DÜZELTİLDİ: TNT PATLAMASI — SADECE PARKUR DÜNYASINDA ÇALIŞIR
+    // =====================================================================
+
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
+        // ★ DÜNYA FİLTRESİ: Patlama parkur dünyasında değilse hiçbir şey yapma
+        if (!manager.isParkourWorld(event.getEntity().getWorld())) return;
+
         if (event.getEntity() instanceof TNTPrimed) {
             event.blockList().clear();
             for (Player player : event.getEntity().getWorld().getPlayers()) {
                 double distance = player.getLocation().distance(event.getEntity().getLocation());
                 if (distance < 20) {
-                    org.bukkit.util.Vector direction = player.getLocation().toVector().subtract(event.getEntity().getLocation().toVector()).normalize();
+                    org.bukkit.util.Vector direction = player.getLocation().toVector()
+                            .subtract(event.getEntity().getLocation().toVector())
+                            .normalize();
                     player.setVelocity(direction.multiply(3));
                 }
             }
@@ -224,13 +247,20 @@ public class ParkourListener implements Listener {
         }
     }
 
+    // =====================================================================
+    // ★ DÜZELTİLDİ: PATLAMA HASARI — SADECE PARKUR DÜNYASINDA İPTAL EDİLİR
+    // =====================================================================
+
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player) {
-            if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
-                    event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
-                event.setCancelled(true);
-            }
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        // ★ DÜNYA FİLTRESİ: Parkur dünyasında değilse normal hasar devam etsin
+        if (!manager.isInParkourWorld(player)) return;
+
+        if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
+                event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
+            event.setCancelled(true);
         }
     }
 }
