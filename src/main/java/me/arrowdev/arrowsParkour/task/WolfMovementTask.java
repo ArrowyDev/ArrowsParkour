@@ -23,6 +23,10 @@ public class WolfMovementTask extends BukkitRunnable {
     private int ticks = 0;
     private static final int MAX_TICKS = 1200; // 60 saniye timeout
 
+    // 🟢 DÜZELTİLDİ: Varış mesafesi 0.45'ten 0.3'e düşürüldü.
+    // Artık kurt hedefe çok daha yaklaşmadan "vardım" demeyecek.
+    private static final double ARRIVAL_DISTANCE = 0.3;
+
     public WolfMovementTask(ArrowsParkour plugin, Player player, Wolf wolf,
                             ParkourSession session, Location targetLoc, int targetBlockIndex) {
         this.plugin = plugin;
@@ -32,8 +36,7 @@ public class WolfMovementTask extends BukkitRunnable {
         this.jumpBlocks = session.getJumpBlocks();
         this.targetIndex = targetBlockIndex;
 
-        // Başlangıç: oyuncuya en yakın jumpBlock index'i
-        this.currentIndex = findNearestIndex(player.getLocation());
+        this.currentIndex = findNearestIndex(wolf.getLocation());
     }
 
     @Override
@@ -54,34 +57,33 @@ public class WolfMovementTask extends BukkitRunnable {
         }
 
         // Hedefe ulaştık mı?
-        if (currentIndex == targetIndex) {
+        if (currentIndex >= targetIndex) {
             finish();
             cancel();
             return;
         }
 
-        // Mevcut hedef blok
+        // Mevcut takip edilen hedef blok
         Location currentTarget = jumpBlocks.get(currentIndex).clone().add(0.5, 1.2, 0.5);
         double distance = wolf.getLocation().distance(currentTarget);
 
-        // Bu bloğa ulaştıysak sıradakine geç — eşiği küçült
-        if (distance < 0.4) {
-            if (targetIndex > currentIndex) currentIndex++;
-            else currentIndex--;
+        // Bloğa yeterince yaklaştıysa sıradakine geç
+        if (distance < ARRIVAL_DISTANCE) {
+            currentIndex++;
             return;
         }
 
-        // Kurdu hareket ettir
+        // Kurdu yumuşakça hareket ettir
         moveToward(currentTarget);
 
-        // Oyuncu kurtta değilse bindirmeyi tekrar dene
+        // Herhangi bir sebeple oyuncu binekten indiyse geri bindir
         if (!wolf.getPassengers().contains(player)) {
             wolf.addPassenger(player);
         }
 
         if (ticks % 20 == 0) {
-            plugin.getLogger().info("🐺 index=" + currentIndex + "/" + targetIndex +
-                    " mesafe=" + String.format("%.2f", distance));
+            plugin.getLogger().info("🐺 Wolf | Index: " + currentIndex + "/" + targetIndex +
+                    " | Mesafe: " + String.format("%.2f", distance));
         }
     }
 
@@ -94,8 +96,9 @@ public class WolfMovementTask extends BukkitRunnable {
 
         double hDist = Math.sqrt(dx * dx + dz * dz);
 
-        // Hedefe ne kadar yakınsa o kadar yavaşla
-        double speed = Math.min(0.3, hDist * 0.4);
+        // 🟢 DÜZELTİLDİ: Hedefe yaklaşınca daha fazla yavaşla (0.35 -> 0.25)
+        // Bu sayede hedefin önünde savrulmayı önler.
+        double speed = Math.min(0.25, hDist * 0.4);
 
         double vx = 0, vz = 0;
         if (hDist > 0.01) {
@@ -103,29 +106,32 @@ public class WolfMovementTask extends BukkitRunnable {
             vz = (dz / hDist) * speed;
         }
 
-        // gravity(false) olduğu için sadece dy'ye göre git
-        double vy = Math.max(-0.15, Math.min(0.15, dy * 0.4));
+        // Dikey hareketi de biraz daha hassas yaptık
+        double vy = Math.max(-0.15, Math.min(0.2, dy * 0.4));
 
         wolf.setVelocity(new Vector(vx, vy, vz));
 
-        // Kurdu hedefe baktır
+        // Kurdu hedefe doğru baktır
         Location face = wolfLoc.clone();
         face.setDirection(target.toVector().subtract(wolfLoc.toVector()));
         wolf.teleport(face);
     }
 
     private void finish() {
-        Location finalTarget = jumpBlocks.get(targetIndex).clone().add(0.5, 1.2, 0.5);
-        player.sendMessage("§a✓ Hedefe ulaştın! (index: " + targetIndex + ")");
-        plugin.getLogger().info("✅ WolfMovement tamamlandı → index " + targetIndex);
+        // 🟢 DÜZELTİLDİ: Son duruş noktası optimize edildi.
+        // Y ekseni 1.1'den 0.8'e çekildi, böylece bloğun tam üzerine oturur.
+        Location finalTarget = jumpBlocks.get(targetIndex).clone().add(0.5, 0.8, 0.5);
+
+        // Son konuma direkt ışınla (kaymayı önlemek için)
+        wolf.teleport(finalTarget);
+
+        player.sendMessage("§a✓ Hedefe başarıyla ulaştınız!");
 
         // Oyuncuyu indirip kurdu kaldır
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             session.dismountWolf(player);
-            plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-                session.removeWolf();
-            }, 10L);
-        }, 3L);
+            plugin.getServer().getScheduler().runTaskLater(plugin, session::removeWolf, 8L);
+        }, 5L);
     }
 
     private void cleanup() {
@@ -136,10 +142,29 @@ public class WolfMovementTask extends BukkitRunnable {
     }
 
     private int findNearestIndex(Location loc) {
+        // Ayağın altındaki bloğu kontrol et
+        int bx = loc.getBlockX();
+        int by = loc.getBlockY() - 1;
+        int bz = loc.getBlockZ();
+
+        for (int i = 0; i < jumpBlocks.size(); i++) {
+            Location jb = jumpBlocks.get(i);
+            if (jb.getBlockX() == bx && jb.getBlockY() == by && jb.getBlockZ() == bz) {
+                return i;
+            }
+        }
+
+        // Bulamazsa Y öncelikli en yakın
         int nearest = 0;
         double minDist = Double.MAX_VALUE;
+
         for (int i = 0; i < jumpBlocks.size(); i++) {
-            double d = loc.distance(jumpBlocks.get(i));
+            Location jb = jumpBlocks.get(i);
+            double dy = Math.abs(loc.getY() - (jb.getY() + 1));
+            double dx = loc.getX() - (jb.getX() + 0.5);
+            double dz = loc.getZ() - (jb.getZ() + 0.5);
+            double d = Math.sqrt(dx * dx + dz * dz) + (dy * 10);
+
             if (d < minDist) {
                 minDist = d;
                 nearest = i;

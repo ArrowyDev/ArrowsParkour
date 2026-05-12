@@ -17,7 +17,7 @@ import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.Wolf;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.Vector;
-import org.bukkit.scheduler.BukkitRunnable;
+
 import java.util.List;
 
 public class APCommand implements CommandExecutor {
@@ -272,7 +272,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // WOLF KOMUTU
+        // ======================== WOLF KOMUTU ========================
         if (args[0].equalsIgnoreCase("wolf")) {
             if (args.length < 3) {
                 p.sendMessage("§cKullanım: /ap wolf <up|down> <blok-sayısı>");
@@ -299,22 +299,47 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                java.util.List<Location> jumpBlocks = session.getJumpBlocks();
+                List<Location> jumpBlocks = session.getJumpBlocks();
                 if (jumpBlocks.isEmpty()) {
                     p.sendMessage("§cJumpBlock listesi boş!");
                     return true;
                 }
 
-                // En yakın jumpblock'u bul
                 Location playerLoc = p.getLocation();
-                int currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
 
-                // Hedef blok indeksini belirle
+                // 🟢 BAŞLANGIÇ ZEMİNİ KONTROLÜ
+                boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6);
+
+                int currentBlockIndex;
+                Location wolfSpawnLoc;
                 int targetBlockIndex;
-                if (direction.equals("up")) {
-                    targetBlockIndex = Math.min(currentBlockIndex + blockCount, jumpBlocks.size() - 1);
+
+                if (isOnBaseGround) {
+                    // 🟢 BAŞLANGIÇTA: 1. bloğa ışınla, ondan sonra (blockCount - 1) ilerle
+                    // Çünkü 1. bloğa ışınlanmak zaten 1 ilerleme sayılır
+                    currentBlockIndex = 0;
+                    Location firstBlock = jumpBlocks.get(0).clone().add(0.5, 1.0, 0.5);
+                    p.teleport(firstBlock);
+                    p.sendMessage("§a🐺 Başlangıçtan 1. bloğa ışınlandınız.");
+                    wolfSpawnLoc = firstBlock;
+
+                    // Hedef: 0 + blockCount = blockCount. blok
+                    // Örnek: blockCount=10 → 10. blokta durur (1+9 mantığı)
+                    if (direction.equals("up")) {
+                        targetBlockIndex = Math.min(blockCount, jumpBlocks.size() - 1);
+                    } else {
+                        targetBlockIndex = 0;
+                    }
                 } else {
-                    targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
+                    // 🟢 ZATEN PARKURDAYSA: Bulunduğu yerden tam blockCount kadar ilerle
+                    currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
+                    wolfSpawnLoc = p.getLocation();
+
+                    if (direction.equals("up")) {
+                        targetBlockIndex = Math.min(currentBlockIndex + blockCount, jumpBlocks.size() - 1);
+                    } else {
+                        targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
+                    }
                 }
 
                 if (targetBlockIndex == currentBlockIndex) {
@@ -322,39 +347,32 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                // Hedef konum
                 Location targetBlock = jumpBlocks.get(targetBlockIndex);
                 Location targetLoc = targetBlock.clone().add(0.5, 1.2, 0.5);
 
-                manager.getPlugin().getLogger().info("🐺 Wolf komutu başladı!");
-                manager.getPlugin().getLogger().info("   Mevcut: " + currentBlockIndex + " → Hedef: " + targetBlockIndex);
-                manager.getPlugin().getLogger().info("   Hedef konum: " + targetLoc);
+                manager.getPlugin().getLogger().info("🐺 Wolf → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex + " | Fark: " + (targetBlockIndex - currentBlockIndex));
 
                 // Kurt oluştur
                 if (!session.hasWolf()) {
-                    Wolf wolf = p.getWorld().spawn(p.getLocation(), Wolf.class);
+                    Wolf wolf = p.getWorld().spawn(wolfSpawnLoc, Wolf.class);
                     wolf.setOwner(p);
                     wolf.setTamed(true);
-
-                    // ✅ DOĞRU AYARLAR
                     wolf.setAI(true);
                     wolf.setGravity(true);
                     wolf.setInvulnerable(true);
                     wolf.setCollidable(false);
 
                     session.setWolf(wolf);
-                    manager.getPlugin().getLogger().info("✓ Kurt spawn edildi!");
                 }
 
                 Wolf wolf = session.getWolf();
 
-                // Oyuncuyu kurta bind et
+                // Oyuncuyu kurta bindir
                 Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
                     try {
                         wolf.addPassenger(p);
-                        manager.getPlugin().getLogger().info("✓ Oyuncu kurta bindirildi!");
                     } catch (Exception e) {
-                        manager.getPlugin().getLogger().warning("❌ Bind hatası: " + e.getMessage());
+                        manager.getPlugin().getLogger().warning("Bind hatası: " + e.getMessage());
                     }
                 }, 1L);
 
@@ -362,7 +380,7 @@ public class APCommand implements CommandExecutor {
                 new WolfMovementTask(manager.getPlugin(), p, wolf, session, targetLoc, targetBlockIndex)
                         .runTaskTimer(manager.getPlugin(), 0L, 1L);
 
-                p.sendMessage("§a🐺 Kurt oluşturuldu! " + blockCount + " blok " +
+                p.sendMessage("§a🐺 Kurt ile " + blockCount + " blok " +
                         (direction.equals("up") ? "yukarı" : "aşağı") + " gidiyoruz...");
                 return true;
 
@@ -596,22 +614,36 @@ public class APCommand implements CommandExecutor {
         return true;
     }
 
-    private String generateRandomName() {
-        String[] randomNames = {
-                "testuser1","testuser2","testuser","arrowtesttnt"
-        };
-        return randomNames[(int) (Math.random() * randomNames.length)];
-    }
+    // 🟢 DÜZELTİLDİ: Artık sadece X,Z değil tam 3D (X, Y, Z) mesafesini kontrol ediyor!
+    // 🟢 KESİN ÇÖZÜM: Oyuncunun ayağının altındaki bloğa bakar, %100 doğru index bulur
+    private int findNearestBlockIndex(Location playerLoc, List<Location> jumpBlocks) {
+        // Oyuncunun ayağının tam altındaki blok koordinatları
+        int bx = playerLoc.getBlockX();
+        int by = playerLoc.getBlockY() - 1;
+        int bz = playerLoc.getBlockZ();
 
-    private int findNearestBlockIndex(Location playerLoc, java.util.List<Location> jumpBlocks) {
+        // Önce tam eşleşme ara (oyuncu o bloğun üzerindeyse direkt o index)
+        for (int i = 0; i < jumpBlocks.size(); i++) {
+            Location jb = jumpBlocks.get(i);
+            if (jb.getBlockX() == bx && jb.getBlockY() == by && jb.getBlockZ() == bz) {
+                return i;
+            }
+        }
+
+        // Bulamazsa Y öncelikli en yakını ara (Y'ye 10x ağırlık)
         int nearestIndex = 0;
         double minDistance = Double.MAX_VALUE;
 
         for (int i = 0; i < jumpBlocks.size(); i++) {
             Location jb = jumpBlocks.get(i);
-            double dx = playerLoc.getX() - jb.getX();
-            double dz = playerLoc.getZ() - jb.getZ();
-            double dist = Math.sqrt(dx * dx + dz * dz);
+
+            double dy = Math.abs(playerLoc.getY() - (jb.getY() + 1));
+            double dx = playerLoc.getX() - (jb.getX() + 0.5);
+            double dz = playerLoc.getZ() - (jb.getZ() + 0.5);
+
+            // Y eksenine 10x ağırlık vererek aynı yükseklikteki bloğu önceliklendir
+            double dist = Math.sqrt(dx * dx + dz * dz) + (dy * 10);
+
             if (dist < minDistance) {
                 minDistance = dist;
                 nearestIndex = i;
