@@ -22,6 +22,9 @@ public class ParkourSession {
     private Wolf wolf;
     private int currentBlockIndex;
 
+    // ★ YENİ: finish() sırasında onDismount'un eject'i iptal etmemesi için
+    private boolean wolfFinishing = false;
+
     public ParkourSession(Player player) {
         this.player = player;
         this.allBlocks = new ArrayList<>();
@@ -85,8 +88,14 @@ public class ParkourSession {
         }
     }
 
+    // ★ YENİ getter/setter
+    public boolean isWolfFinishing() { return wolfFinishing; }
+    public void setWolfFinishing(boolean wolfFinishing) { this.wolfFinishing = wolfFinishing; }
+
     public int getCurrentBlockIndex() { return currentBlockIndex; }
-    public void setCurrentBlockIndex(int index) { this.currentBlockIndex = Math.max(0, Math.min(index, allBlocks.size() - 1)); }
+    public void setCurrentBlockIndex(int index) {
+        this.currentBlockIndex = Math.max(0, Math.min(index, allBlocks.size() - 1));
+    }
 
     public int findNearestBlockIndex() {
         Location playerLoc = player.getLocation();
@@ -114,13 +123,9 @@ public class ParkourSession {
 
     private final List<Location> jumpBlocks = new ArrayList<>();
 
-    public List<Location> getJumpBlocks() {
-        return jumpBlocks;
-    }
+    public List<Location> getJumpBlocks() { return jumpBlocks; }
 
-    public void addJumpBlock(Location loc) {
-        jumpBlocks.add(loc);
-    }
+    public void addJumpBlock(Location loc) { jumpBlocks.add(loc); }
 
     public String getProtectionDisplay() {
         int net = forwardProtection - backwardProtection;

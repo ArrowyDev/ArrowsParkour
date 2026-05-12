@@ -2,6 +2,7 @@ package me.arrowdev.arrowsParkour.task;
 
 import me.arrowdev.arrowsParkour.ArrowsParkour;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Wolf;
@@ -21,9 +22,11 @@ public class WolfMovementTask extends BukkitRunnable {
 
     private int currentIndex;
     private int ticks = 0;
-    private static final int MAX_TICKS = 1200; // 60 saniye timeout
-
+    private static final int MAX_TICKS = 1200;
     private static final double ARRIVAL_DISTANCE = 0.3;
+
+    // ★ Yön: true = ileri (up), false = geri (down)
+    private final boolean goingForward;
 
     public WolfMovementTask(ArrowsParkour plugin, Player player, Wolf wolf,
                             ParkourSession session, Location targetLoc, int targetBlockIndex) {
@@ -33,8 +36,8 @@ public class WolfMovementTask extends BukkitRunnable {
         this.session = session;
         this.jumpBlocks = session.getJumpBlocks();
         this.targetIndex = targetBlockIndex;
-
         this.currentIndex = findNearestIndex(wolf.getLocation());
+        this.goingForward = (targetIndex > currentIndex);
     }
 
     @Override
@@ -54,7 +57,12 @@ public class WolfMovementTask extends BukkitRunnable {
             return;
         }
 
-        if (currentIndex >= targetIndex) {
+        // ★ Yöne göre bitiş koşulu
+        boolean finished = goingForward
+                ? (currentIndex >= targetIndex)
+                : (currentIndex <= targetIndex);
+
+        if (finished) {
             finish();
             cancel();
             return;
@@ -64,7 +72,12 @@ public class WolfMovementTask extends BukkitRunnable {
         double distance = wolf.getLocation().distance(currentTarget);
 
         if (distance < ARRIVAL_DISTANCE) {
-            currentIndex++;
+            // ★ Yöne göre index güncelle
+            if (goingForward) {
+                currentIndex++;
+            } else {
+                currentIndex--;
+            }
             return;
         }
 
@@ -76,6 +89,7 @@ public class WolfMovementTask extends BukkitRunnable {
 
         if (ticks % 20 == 0) {
             plugin.getLogger().info("🐺 Wolf | Index: " + currentIndex + "/" + targetIndex +
+                    " | Yön: " + (goingForward ? "İLERİ" : "GERİ") +
                     " | Mesafe: " + String.format("%.2f", distance));
         }
     }
@@ -89,11 +103,7 @@ public class WolfMovementTask extends BukkitRunnable {
 
         double hDist = Math.sqrt(dx * dx + dz * dz);
 
-        // =====================================================
-        // ★ HIZ AYARI BURADA ★
-        // Maksimum yatay hızı 0.25'ten 0.35'e çıkardık.
-        // Hızlanma faktörünü 0.4'ten 0.5'e çıkardık.
-        // =====================================================
+        // ★ Orijinal hız değerleri — dokunulmadı
         double speed = Math.min(0.35, hDist * 0.5);
 
         double vx = 0, vz = 0;
@@ -102,10 +112,6 @@ public class WolfMovementTask extends BukkitRunnable {
             vz = (dz / hDist) * speed;
         }
 
-        // =====================================================
-        // ★ DİKEY HIZ AYARI BURADA ★
-        // Maksimum dikey hızı 0.2'den 0.3'e çıkardık.
-        // =====================================================
         double vy = Math.max(-0.2, Math.min(0.3, dy * 0.5));
 
         wolf.setVelocity(new Vector(vx, vy, vz));
@@ -116,17 +122,46 @@ public class WolfMovementTask extends BukkitRunnable {
     }
 
     private void finish() {
-        Location finalTarget = jumpBlocks.get(targetIndex).clone().add(0.5, 0.8, 0.5);
-        wolf.teleport(finalTarget);
-        player.sendMessage("§a✓ Hedefe başarıyla ulaştınız!");
+        // ★ 1. Flag → onDismount müdahale etmesin
+        session.setWolfFinishing(true);
 
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            session.dismountWolf(player);
-            plugin.getServer().getScheduler().runTaskLater(plugin, session::removeWolf, 8L);
-        }, 5L);
+        // ★ 2. Oyuncuyu wolf'tan indir
+        wolf.eject();
+
+        // ★ 3. Landing bloğunu hesapla
+        // İleri: APCommand'da +1 eklendi, burada -1 ile dengele
+        // Geri:  APCommand'da +1/-1 YOK, burada da düzeltme YOK
+        int landingIndex;
+        if (goingForward) {
+            landingIndex = Math.max(0, targetIndex - 1);
+        } else {
+            landingIndex = targetIndex; // ★ DÜZELTİLDİ: +1 kaldırıldı
+        }
+
+        Location jumpBlock = jumpBlocks.get(landingIndex);
+
+        Location playerTarget = new Location(
+                player.getWorld(),
+                jumpBlock.getBlockX() + 0.5,
+                jumpBlock.getBlockY() + 1.0,
+                jumpBlock.getBlockZ() + 0.5,
+                player.getLocation().getYaw(),
+                player.getLocation().getPitch()
+        );
+
+        // ★ DÜZELTİLDİ: eject + teleport aynı tick'te çalışıyordu
+        // wolf.eject() tamamlanmadan teleport olduğu için oyuncu kenarına düşüyordu
+        // 1 tick bekleyerek eject'in tamamlanmasını garantiliyoruz
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            player.teleport(playerTarget);
+            player.sendMessage("§a✓ Hedefe başarıyla ulaştınız!");
+            session.removeWolf();
+            session.setWolfFinishing(false);
+        }, 1L);
     }
 
     private void cleanup() {
+        session.setWolfFinishing(false);
         if (session.hasWolf()) {
             session.dismountWolf(player);
             session.removeWolf();

@@ -306,8 +306,6 @@ public class APCommand implements CommandExecutor {
                 }
 
                 Location playerLoc = p.getLocation();
-
-                // Başlangıç zemini kontrolü
                 boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6);
 
                 int currentBlockIndex;
@@ -315,12 +313,6 @@ public class APCommand implements CommandExecutor {
                 int targetBlockIndex;
 
                 if (isOnBaseGround) {
-                    // =====================================================
-                    // BAŞLANGIÇ DURUMU:
-                    // Oyuncu 1. bloğa işınlanır → mevcut sistem korunur
-                    // Target = blockCount (wolf 1'den blockCount'a gider = blockCount-1 adım)
-                    // Toplam: 1 (ışınlama) + (blockCount-1) (hareket) = blockCount ✓
-                    // =====================================================
                     currentBlockIndex = 0;
                     Location firstBlock = jumpBlocks.get(0).clone().add(0.5, 1.0, 0.5);
                     p.teleport(firstBlock);
@@ -334,22 +326,18 @@ public class APCommand implements CommandExecutor {
                     }
 
                 } else {
-                    // =====================================================
-                    // ★ DÜZELTİLDİ: PARKUR ÜZERİNDE DURUM
-                    // Wolf başladığında zaten üzerinde olduğu bloğu
-                    // "vardım" sayarak atladığı için +1 ekliyoruz.
-                    // Bu sayede net ilerleme tam blockCount kadar olur.
-                    // =====================================================
                     currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
                     wolfSpawnLoc = p.getLocation();
 
                     if (direction.equals("up")) {
-                        // ★ DEĞİŞİKLİK: blockCount → blockCount + 1
+                        // ileri: +1 ekliyoruz çünkü wolf mevcut bloğu atlıyor
+                        // finish()'te targetIndex - 1 ile düzeltilecek
                         targetBlockIndex = Math.min(currentBlockIndex + blockCount + 1, jumpBlocks.size() - 1);
                     } else {
-                        // Geri giderken de aynı mantık: -blockCount - 1
-                        // Ama 0'ın altına düşmemeli
-                        targetBlockIndex = Math.max(currentBlockIndex - blockCount - 1, 0);
+                        // ★ DÜZELTİLDİ: Eskiden -blockCount - 1 vardı
+                        // finish()'te +1 eklenince 2 fazla geri gidiyordu
+                        // Sadece -blockCount, finish()'te düzeltme YOK
+                        targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
                     }
                 }
 
@@ -363,7 +351,6 @@ public class APCommand implements CommandExecutor {
 
                 manager.getPlugin().getLogger().info("🐺 Wolf → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex + " | Fark: " + (targetBlockIndex - currentBlockIndex));
 
-                // Kurt oluştur
                 if (!session.hasWolf()) {
                     Wolf wolf = p.getWorld().spawn(wolfSpawnLoc, Wolf.class);
                     wolf.setOwner(p);
@@ -372,13 +359,11 @@ public class APCommand implements CommandExecutor {
                     wolf.setGravity(true);
                     wolf.setInvulnerable(true);
                     wolf.setCollidable(false);
-
                     session.setWolf(wolf);
                 }
 
                 Wolf wolf = session.getWolf();
 
-                // Oyuncuyu kurta bindir
                 Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
                     try {
                         wolf.addPassenger(p);
@@ -387,7 +372,6 @@ public class APCommand implements CommandExecutor {
                     }
                 }, 1L);
 
-                // Hareket task'ını başlat
                 new WolfMovementTask(manager.getPlugin(), p, wolf, session, targetLoc, targetBlockIndex)
                         .runTaskTimer(manager.getPlugin(), 0L, 1L);
 

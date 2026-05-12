@@ -36,10 +36,6 @@ public class ParkourListener implements Listener {
         this.lastDisplayHeight = new HashMap<>();
     }
 
-    // =====================================================================
-    // DÜNYA DEĞİŞİMİ
-    // =====================================================================
-
     @EventHandler
     public void onWorldChange(PlayerChangedWorldEvent event) {
         Player p = event.getPlayer();
@@ -51,10 +47,6 @@ public class ParkourListener implements Listener {
             manager.cancelCountdown(p);
         }
     }
-
-    // =====================================================================
-    // GİRİŞ / ÇIKIŞ
-    // =====================================================================
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
@@ -74,10 +66,6 @@ public class ParkourListener implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         manager.removeBossBar(e.getPlayer());
     }
-
-    // =====================================================================
-    // HAREKET
-    // =====================================================================
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent event) {
@@ -144,7 +132,15 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        if (session.hasWolf() && e.getDismounted() != null && e.getDismounted().equals(session.getWolf())) {
+        if (session.hasWolf() && e.getDismounted() != null
+                && e.getDismounted().equals(session.getWolf())) {
+
+            // ★ DÜZELTİLDİ: finish() kasıtlı eject yapıyor,
+            // ona müdahale etme. Sadece istem dışı dismount'ları engelle.
+            if (session.isWolfFinishing()) {
+                return;
+            }
+
             e.setCancelled(true);
 
             Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
@@ -171,10 +167,6 @@ public class ParkourListener implements Listener {
             }
         }
     }
-
-    // =====================================================================
-    // BLOK KIRMA / KOYMA
-    // =====================================================================
 
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
@@ -223,13 +215,8 @@ public class ParkourListener implements Listener {
         manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
     }
 
-    // =====================================================================
-    // ★ DÜZELTİLDİ: TNT PATLAMASI — SADECE PARKUR DÜNYASINDA ÇALIŞIR
-    // =====================================================================
-
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
-        // ★ DÜNYA FİLTRESİ: Patlama parkur dünyasında değilse hiçbir şey yapma
         if (!manager.isParkourWorld(event.getEntity().getWorld())) return;
 
         if (event.getEntity() instanceof TNTPrimed) {
@@ -247,15 +234,10 @@ public class ParkourListener implements Listener {
         }
     }
 
-    // =====================================================================
-    // ★ DÜZELTİLDİ: PATLAMA HASARI — SADECE PARKUR DÜNYASINDA İPTAL EDİLİR
-    // =====================================================================
-
     @EventHandler
     public void onEntityDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
 
-        // ★ DÜNYA FİLTRESİ: Parkur dünyasında değilse normal hasar devam etsin
         if (!manager.isInParkourWorld(player)) return;
 
         if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION ||
