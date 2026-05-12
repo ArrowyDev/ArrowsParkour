@@ -390,7 +390,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // AREA
+        // AREA SYSTEM
         if (args[0].equalsIgnoreCase("area")) {
             if (args.length < 2) {
                 p.sendMessage("§cKullanım: /ap area <true/false>");
