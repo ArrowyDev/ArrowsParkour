@@ -171,5 +171,5 @@ public class WolfMovementTask extends BukkitRunnable {
             }
         }
         return nearest;
-    }
+    }//s
 }
