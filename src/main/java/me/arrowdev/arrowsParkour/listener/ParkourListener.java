@@ -87,7 +87,8 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        if (session.hasWolf() && session.getWolf().getPassengers().contains(p)) {
+        // ★ hasMount() ile tüm hayvanları kapsıyor (wolf, chicken, cat)
+        if (session.hasMount() && session.getMount().getPassengers().contains(p)) {
             event.setCancelled(true);
             return;
         }
@@ -132,22 +133,22 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        if (session.hasWolf() && e.getDismounted() != null
-                && e.getDismounted().equals(session.getWolf())) {
+        // ★ hasMount() ile wolf, chicken, cat hepsi kapsanıyor
+        if (session.hasMount() && e.getDismounted() != null
+                && e.getDismounted().equals(session.getMount())) {
 
-            // ★ DÜZELTİLDİ: finish() kasıtlı eject yapıyor,
-            // ona müdahale etme. Sadece istem dışı dismount'ları engelle.
-            if (session.isWolfFinishing()) {
+            // finish() kasıtlı eject yapıyorsa müdahale etme
+            if (session.isMountFinishing()) {
                 return;
             }
 
             e.setCancelled(true);
 
             Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
-                if (session.hasWolf() && session.getWolf().isValid() && !p.isDead()) {
+                if (session.hasMount() && session.getMount().isValid() && !p.isDead()) {
                     try {
-                        if (!session.getWolf().getPassengers().contains(p)) {
-                            session.getWolf().addPassenger(p);
+                        if (!session.getMount().getPassengers().contains(p)) {
+                            session.getMount().addPassenger(p);
                         }
                     } catch (Exception ignored) {}
                 }

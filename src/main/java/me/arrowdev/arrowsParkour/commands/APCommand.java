@@ -2,6 +2,7 @@ package me.arrowdev.arrowsParkour.commands;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
+import me.arrowdev.arrowsParkour.task.AnimalMovementTask;
 import me.arrowdev.arrowsParkour.task.WolfMovementTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -12,6 +13,9 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Cat;
+import org.bukkit.entity.Chicken;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.Wolf;
@@ -19,10 +23,12 @@ import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.util.Vector;
 
 import java.util.List;
+import java.util.Random;
 
 public class APCommand implements CommandExecutor {
 
     private final ParkourManager manager;
+    private final Random random = new Random();
 
     public APCommand(ParkourManager manager) {
         this.manager = manager;
@@ -32,7 +38,7 @@ public class APCommand implements CommandExecutor {
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (args.length == 0) {
-            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et");
+            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et");
             return true;
         }
 
@@ -93,6 +99,48 @@ public class APCommand implements CommandExecutor {
 
             p.teleport(tp);
             p.sendMessage("§aParkurun ortasına ışınlandın!");
+            return true;
+        }
+
+        // RTP
+        if (args[0].equalsIgnoreCase("rtp")) {
+            ParkourSession session = manager.getSession(p);
+            if (session == null) {
+                p.sendMessage("§cParkurun yok!");
+                return true;
+            }
+
+            List<Location> jumpBlocks = session.getJumpBlocks();
+            if (jumpBlocks.isEmpty()) {
+                p.sendMessage("§cJumpBlock listesi boş!");
+                return true;
+            }
+
+            if (session.hasMount() && session.getMount().getPassengers().contains(p)) {
+                session.setMountFinishing(true);
+                session.getMount().eject();
+                session.removeMount();
+                session.setMountFinishing(false);
+            }
+
+            manager.cancelCountdown(p);
+
+            int randomIndex = random.nextInt(jumpBlocks.size());
+            Location randomBlock = jumpBlocks.get(randomIndex);
+
+            Location teleportLoc = new Location(
+                    p.getWorld(),
+                    randomBlock.getBlockX() + 0.5,
+                    randomBlock.getBlockY() + 1.0,
+                    randomBlock.getBlockZ() + 0.5,
+                    p.getLocation().getYaw(),
+                    p.getLocation().getPitch()
+            );
+
+            p.teleport(teleportLoc);
+            p.sendMessage("§a🎲 Rastgele bloğa ışınlandın! §7(Blok: §e" + (randomIndex + 1) + "§7/§e" + jumpBlocks.size() + "§7)");
+            p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
+            manager.getPlugin().getLogger().info("🎲 RTP: " + p.getName() + " → Blok " + (randomIndex + 1));
             return true;
         }
 
@@ -270,10 +318,14 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // ======================== WOLF KOMUTU ========================
-        if (args[0].equalsIgnoreCase("wolf")) {
+        // ======================== WOLF / CHICKEN / CAT KOMUTLARI ========================
+        // ★ Üç komut da aynı mantıkla çalışıyor, sadece spawn edilen hayvan farklı
+        if (args[0].equalsIgnoreCase("wolf")
+                || args[0].equalsIgnoreCase("chicken")
+                || args[0].equalsIgnoreCase("cat")) {
+
             if (args.length < 3) {
-                p.sendMessage("§cKullanım: /ap wolf <up|down> <blok-sayısı>");
+                p.sendMessage("§cKullanım: /ap " + args[0] + " <up|down> <blok-sayısı>");
                 return true;
             }
 
@@ -303,56 +355,48 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                Location playerLoc = p.getLocation();
+                // Önceki mount varsa temizle
+                if (session.hasMount()) {
+                    session.setMountFinishing(true);
+                    session.getMount().eject();
+                    session.removeMount();
+                    session.setMountFinishing(false);
+                }
 
-                // ★ DÜZELTİLDİ: Önce mevcut index'i bul
+                if (direction.equals("down")) {
+                    manager.cancelCountdown(p);
+                }
+
+                Location playerLoc = p.getLocation();
                 int detectedIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
 
-                // ★ DÜZELTİLDİ: isOnBaseGround kontrolü genişletildi
-                // Zemin altında VEYA 1. blokta (index 0) duruyorsa base ground sayılır
-                // Down komutuyla 1. bloğa döndükten sonra up yapınca da +9 verir
                 boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6)
                         || detectedIndex == 0;
 
                 int currentBlockIndex;
-                Location wolfSpawnLoc;
+                Location animalSpawnLoc;
                 int targetBlockIndex;
 
                 if (isOnBaseGround) {
-                    // =====================================================
-                    // BAŞLANGIÇ / 1. BLOK DURUMU:
-                    // Oyuncu 1. bloğa ışınlanır (bu 1 blok sayılır)
-                    // finish()'te targetIndex - 1 yapılır
-                    // Net: blockCount - 1 = 9 blok (blockCount=10 için) ✅
-                    // =====================================================
                     currentBlockIndex = 0;
                     Location firstBlock = jumpBlocks.get(0).clone().add(0.5, 1.0, 0.5);
                     p.teleport(firstBlock);
-                    p.sendMessage("§a🐺 Başlangıçtan 1. bloğa ışınlandınız.");
-                    wolfSpawnLoc = firstBlock;
+                    p.sendMessage("§a🐾 Başlangıçtan 1. bloğa ışınlandınız.");
+                    animalSpawnLoc = firstBlock;
 
                     if (direction.equals("up")) {
-                        // finish()'te -1 yapılacak → net: blockCount - 1 = 9 blok
                         targetBlockIndex = Math.min(blockCount, jumpBlocks.size() - 1);
                     } else {
-                        // 1. bloktan daha aşağı gidemez
                         targetBlockIndex = 0;
                     }
 
                 } else {
-                    // =====================================================
-                    // PARKUR ÜZERİNDE (index > 0) DURUM:
-                    // Wolf mevcut bloğu "vardım" sayıp atlar
-                    // finish()'te -1 yapılır → net: blockCount = 10 blok ✅
-                    // =====================================================
                     currentBlockIndex = detectedIndex;
-                    wolfSpawnLoc = p.getLocation();
+                    animalSpawnLoc = p.getLocation();
 
                     if (direction.equals("up")) {
-                        // finish()'te -1 yapılacak, net blockCount blok gider
                         targetBlockIndex = Math.min(currentBlockIndex + blockCount + 1, jumpBlocks.size() - 1);
                     } else {
-                        // finish()'te düzeltme yok, direkt targetIndex'e ışınlanır
                         targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
                     }
                 }
@@ -365,33 +409,62 @@ public class APCommand implements CommandExecutor {
                 Location targetBlock = jumpBlocks.get(targetBlockIndex);
                 Location targetLoc = targetBlock.clone().add(0.5, 1.2, 0.5);
 
-                manager.getPlugin().getLogger().info("🐺 Wolf → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex + " | Fark: " + (targetBlockIndex - currentBlockIndex));
+                manager.getPlugin().getLogger().info("🐾 " + args[0].toUpperCase() + " → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex);
 
-                if (!session.hasWolf()) {
-                    Wolf wolf = p.getWorld().spawn(wolfSpawnLoc, Wolf.class);
-                    wolf.setOwner(p);
-                    wolf.setTamed(true);
-                    wolf.setAI(true);
-                    wolf.setGravity(true);
-                    wolf.setInvulnerable(true);
-                    wolf.setCollidable(false);
-                    session.setWolf(wolf);
+                // ★ Hangi hayvana göre spawn et
+                LivingEntity animal;
+                String animalEmoji;
+
+                switch (args[0].toLowerCase()) {
+                    case "chicken" -> {
+                        Chicken chicken = p.getWorld().spawn(animalSpawnLoc, Chicken.class);
+                        chicken.setAI(true);
+                        chicken.setGravity(true);
+                        chicken.setInvulnerable(true);
+                        chicken.setCollidable(false);
+                        chicken.setBaby();
+                        animal = chicken;
+                        animalEmoji = "🐔";
+                    }
+                    case "cat" -> {
+                        Cat cat = p.getWorld().spawn(animalSpawnLoc, Cat.class);
+                        cat.setTamed(true);
+                        cat.setOwner(p);
+                        cat.setAI(true);
+                        cat.setGravity(true);
+                        cat.setInvulnerable(true);
+                        cat.setCollidable(false);
+                        animal = cat;
+                        animalEmoji = "🐱";
+                    }
+                    default -> {
+                        Wolf wolf = p.getWorld().spawn(animalSpawnLoc, Wolf.class);
+                        wolf.setOwner(p);
+                        wolf.setTamed(true);
+                        wolf.setAI(true);
+                        wolf.setGravity(true);
+                        wolf.setInvulnerable(true);
+                        wolf.setCollidable(false);
+                        animal = wolf;
+                        animalEmoji = "🐺";
+                    }
                 }
 
-                Wolf wolf = session.getWolf();
+                session.setMount(animal);
 
+                final LivingEntity finalAnimal = animal;
                 Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
                     try {
-                        wolf.addPassenger(p);
+                        finalAnimal.addPassenger(p);
                     } catch (Exception e) {
                         manager.getPlugin().getLogger().warning("Bind hatası: " + e.getMessage());
                     }
                 }, 1L);
 
-                new WolfMovementTask(manager.getPlugin(), p, wolf, session, targetLoc, targetBlockIndex)
+                new AnimalMovementTask(manager.getPlugin(), p, animal, session, targetLoc, targetBlockIndex)
                         .runTaskTimer(manager.getPlugin(), 0L, 1L);
 
-                p.sendMessage("§a🐺 Kurt ile " + blockCount + " blok " +
+                p.sendMessage("§a" + animalEmoji + " " + blockCount + " blok " +
                         (direction.equals("up") ? "yukarı" : "aşağı") + " gidiyoruz...");
                 return true;
 

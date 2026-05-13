@@ -2,8 +2,8 @@ package me.arrowdev.arrowsParkour.model;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Wolf;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,11 +19,12 @@ public class ParkourSession {
     private boolean areaEditEnabled;
     private int forwardProtection;
     private int backwardProtection;
-    private Wolf wolf;
     private int currentBlockIndex;
 
-    // ★ YENİ: finish() sırasında onDismount'un eject'i iptal etmemesi için
-    private boolean wolfFinishing = false;
+    // ★ Wolf yerine generic LivingEntity mount
+    // Wolf, Chicken, Cat hepsi buraya atanır
+    private LivingEntity mount;
+    private boolean mountFinishing = false;
 
     public ParkourSession(Player player) {
         this.player = player;
@@ -33,7 +34,7 @@ public class ParkourSession {
         this.areaEditEnabled = false;
         this.forwardProtection = 0;
         this.backwardProtection = 0;
-        this.wolf = null;
+        this.mount = null;
         this.currentBlockIndex = 0;
     }
 
@@ -72,25 +73,47 @@ public class ParkourSession {
         this.backwardProtection += Math.max(0, amount);
     }
 
-    public Wolf getWolf() { return wolf; }
-    public void setWolf(Wolf wolf) { this.wolf = wolf; }
-    public boolean hasWolf() { return wolf != null && wolf.isValid(); }
-    public void removeWolf() {
-        if (wolf != null && wolf.isValid()) {
-            wolf.remove();
-        }
-        wolf = null;
+    // =====================================================================
+    // ★ GENERIC MOUNT METHODları (Wolf, Chicken, Cat hepsi için)
+    // =====================================================================
+
+    public LivingEntity getMount() { return mount; }
+    public void setMount(LivingEntity mount) { this.mount = mount; }
+
+    public boolean hasMount() {
+        return mount != null && mount.isValid();
     }
 
-    public void dismountWolf(Player player) {
-        if (hasWolf() && wolf.getPassengers().contains(player)) {
-            wolf.removePassenger(player);
+    public void removeMount() {
+        if (mount != null && mount.isValid()) {
+            mount.remove();
+        }
+        mount = null;
+    }
+
+    public void dismountAnimal(Player player) {
+        if (hasMount() && mount.getPassengers().contains(player)) {
+            mount.removePassenger(player);
         }
     }
 
-    // ★ YENİ getter/setter
-    public boolean isWolfFinishing() { return wolfFinishing; }
-    public void setWolfFinishing(boolean wolfFinishing) { this.wolfFinishing = wolfFinishing; }
+    public boolean isMountFinishing() { return mountFinishing; }
+    public void setMountFinishing(boolean mountFinishing) { this.mountFinishing = mountFinishing; }
+
+    // =====================================================================
+    // ★ GERIYE DÖNÜK UYUMLULUK — Wolf methodları mount'a yönlendiriyor
+    // APCommand içindeki eski wolf kodu çalışmaya devam eder
+    // =====================================================================
+
+    public LivingEntity getWolf() { return mount; }
+    public void setWolf(LivingEntity wolf) { this.mount = wolf; }
+    public boolean hasWolf() { return hasMount(); }
+    public void removeWolf() { removeMount(); }
+    public void dismountWolf(Player player) { dismountAnimal(player); }
+    public boolean isWolfFinishing() { return mountFinishing; }
+    public void setWolfFinishing(boolean finishing) { this.mountFinishing = finishing; }
+
+    // =====================================================================
 
     public int getCurrentBlockIndex() { return currentBlockIndex; }
     public void setCurrentBlockIndex(int index) {
