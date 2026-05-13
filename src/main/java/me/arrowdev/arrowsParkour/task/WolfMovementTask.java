@@ -103,8 +103,10 @@ public class WolfMovementTask extends BukkitRunnable {
 
         double hDist = Math.sqrt(dx * dx + dz * dz);
 
-        // ★ Orijinal hız değerleri — dokunulmadı
-        double speed = Math.min(0.35, hDist * 0.5);
+        // ★ Hızı istediğin gibi buradan ayarlayabilirsin
+        // 0.35 → 0.6 yatay hız
+        // 0.5  → 0.8 hızlanma faktörü
+        double speed = Math.min(0.6, hDist * 0.8);
 
         double vx = 0, vz = 0;
         if (hDist > 0.01) {
@@ -112,7 +114,9 @@ public class WolfMovementTask extends BukkitRunnable {
             vz = (dz / hDist) * speed;
         }
 
-        double vy = Math.max(-0.2, Math.min(0.3, dy * 0.5));
+        // -0.2 → -0.4 aşağı hız
+        //  0.3 →  0.5 yukarı hız
+        double vy = Math.max(-0.4, Math.min(0.5, dy * 0.8));
 
         wolf.setVelocity(new Vector(vx, vy, vz));
 

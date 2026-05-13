@@ -82,7 +82,6 @@ public class APCommand implements CommandExecutor {
             int baseX = cfg.getInt(path + ".baseX");
             int baseZ = cfg.getInt(path + ".baseZ");
             int baseY = cfg.getInt(path + ".baseY");
-
             int size = 17;
 
             Location tp = new Location(
@@ -118,7 +117,6 @@ public class APCommand implements CommandExecutor {
             int baseX = cfg.getInt(path + ".baseX");
             int baseZ = cfg.getInt(path + ".baseZ");
             int baseY = cfg.getInt(path + ".baseY");
-
             int size = 17;
 
             Location tp = new Location(
@@ -306,13 +304,27 @@ public class APCommand implements CommandExecutor {
                 }
 
                 Location playerLoc = p.getLocation();
-                boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6);
+
+                // ★ DÜZELTİLDİ: Önce mevcut index'i bul
+                int detectedIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
+
+                // ★ DÜZELTİLDİ: isOnBaseGround kontrolü genişletildi
+                // Zemin altında VEYA 1. blokta (index 0) duruyorsa base ground sayılır
+                // Down komutuyla 1. bloğa döndükten sonra up yapınca da +9 verir
+                boolean isOnBaseGround = playerLoc.getY() < (jumpBlocks.get(0).getY() + 0.6)
+                        || detectedIndex == 0;
 
                 int currentBlockIndex;
                 Location wolfSpawnLoc;
                 int targetBlockIndex;
 
                 if (isOnBaseGround) {
+                    // =====================================================
+                    // BAŞLANGIÇ / 1. BLOK DURUMU:
+                    // Oyuncu 1. bloğa ışınlanır (bu 1 blok sayılır)
+                    // finish()'te targetIndex - 1 yapılır
+                    // Net: blockCount - 1 = 9 blok (blockCount=10 için) ✅
+                    // =====================================================
                     currentBlockIndex = 0;
                     Location firstBlock = jumpBlocks.get(0).clone().add(0.5, 1.0, 0.5);
                     p.teleport(firstBlock);
@@ -320,23 +332,27 @@ public class APCommand implements CommandExecutor {
                     wolfSpawnLoc = firstBlock;
 
                     if (direction.equals("up")) {
+                        // finish()'te -1 yapılacak → net: blockCount - 1 = 9 blok
                         targetBlockIndex = Math.min(blockCount, jumpBlocks.size() - 1);
                     } else {
+                        // 1. bloktan daha aşağı gidemez
                         targetBlockIndex = 0;
                     }
 
                 } else {
-                    currentBlockIndex = findNearestBlockIndex(playerLoc, jumpBlocks);
+                    // =====================================================
+                    // PARKUR ÜZERİNDE (index > 0) DURUM:
+                    // Wolf mevcut bloğu "vardım" sayıp atlar
+                    // finish()'te -1 yapılır → net: blockCount = 10 blok ✅
+                    // =====================================================
+                    currentBlockIndex = detectedIndex;
                     wolfSpawnLoc = p.getLocation();
 
                     if (direction.equals("up")) {
-                        // ileri: +1 ekliyoruz çünkü wolf mevcut bloğu atlıyor
-                        // finish()'te targetIndex - 1 ile düzeltilecek
+                        // finish()'te -1 yapılacak, net blockCount blok gider
                         targetBlockIndex = Math.min(currentBlockIndex + blockCount + 1, jumpBlocks.size() - 1);
                     } else {
-                        // ★ DÜZELTİLDİ: Eskiden -blockCount - 1 vardı
-                        // finish()'te +1 eklenince 2 fazla geri gidiyordu
-                        // Sadece -blockCount, finish()'te düzeltme YOK
+                        // finish()'te düzeltme yok, direkt targetIndex'e ışınlanır
                         targetBlockIndex = Math.max(currentBlockIndex - blockCount, 0);
                     }
                 }
@@ -459,7 +475,6 @@ public class APCommand implements CommandExecutor {
                         if (blockMat != Material.AIR) {
                             session.addBlock(loc, blockMat);
                             blocksScanned++;
-
                             manager.getPlugin().getLogger().info("📍 Blok tarandı: " + x + "," + y + "," + z + " -> " + blockMat.name());
                         }
                     }
@@ -495,7 +510,6 @@ public class APCommand implements CommandExecutor {
                 session.addForwardProtection(amount);
                 p.sendMessage("§a✓ " + amount + " ileri koruma eklendi!");
                 p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
-
                 manager.getPlugin().getLogger().info("✅ " + p.getName() + " ileri koruma: +" + amount);
                 return true;
             } catch (NumberFormatException e) {
@@ -527,7 +541,6 @@ public class APCommand implements CommandExecutor {
                 session.addBackwardProtection(amount);
                 p.sendMessage("§c✓ " + amount + " geri koruma eklendi!");
                 p.sendMessage("§6Mevcut koruma: " + session.getProtectionDisplay());
-
                 manager.getPlugin().getLogger().info("✅ " + p.getName() + " geri koruma: +" + amount);
                 return true;
             } catch (NumberFormatException e) {
@@ -601,7 +614,6 @@ public class APCommand implements CommandExecutor {
             }, 0L, 1L);
 
             p.playSound(p.getLocation(), Sound.ENTITY_TNT_PRIMED, 1f, 1f);
-
             return true;
         }
 
