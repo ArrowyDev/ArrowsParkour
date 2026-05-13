@@ -40,7 +40,7 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap clear` → clears the current parkour area  
 - `/ap tp` → teleports you to the center
 - `/ap tnt <username>` `playerName` → sends TNT to the streamer  
-- `/ap reset` `PLAYERNAME` → teleports you to the start  
+- `/ap reset` `pLAYERNAME` → teleports you to the start  
 - `/ap win` → teleports you to the top  
 - `/ap winc` → shows current win count  
 - `/ap winadd <amount>` → adds the specified number of wins
@@ -52,7 +52,8 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap gke <amount>` `playerName` → adds backward protection
 - `/ap prot[clear]` → shows the current protections status/clear prot status
 - `/ap dontmove <amount>` `playerName` → restricts movement for a certain period of time
-- `/ap wolf up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
+- `/ap wolf/chicken/cat up/down <blocks>` `playerName` → viewer interaction (push up/down)
+- `/ap rtp` `playerName` allows you to teleport random parkour block
 
 ---
 
@@ -81,8 +82,10 @@ This system allows streamers to create interactive and chaotic parkour gameplay 
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
-- `/ap prison <amount>` `PLAYERNAME` → the prison system
+- `/ap prison <amount>` `playerName` → the prison system
+- `/ap lava ` `playerName` → the floor is lava
+- `/ap expand` `<block block>` `playerName` → expand the parkour area
+- `/ap collapse` `<block block>` `playerName` → collapse the parkour area
 
 ---
 
@@ -134,7 +137,8 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap gke <amount>` `playerName` → geri koruma ekler
 - `/ap prot[clear]` → mevcut koruma durumunu gösterir/mevcut koruma durumunu temizler
 - `/ap dontmove <amount>` `playerName` → belirtilen süre boyunca hareketi kısıtlar
-- `/ap wolf up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
+- `/ap wolf/chicken/cat up/down <blocks>` `playerName` → izleyici etkileşimi (yukarı/aşağı itme)
+- `/ap rtp` `playerName` rastgele parkur bloğuna ışınlar
   
 ---
 
@@ -163,8 +167,10 @@ Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli h
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
-- `/ap prison <amount>` `PLAYERNAME` → hapis sistemi
+- `/ap prison <amount>` `playerName` → hapis sistemi
+- `/ap lava ` `playerName` → yer lavdan
+- `/ap expand` `<block block>` `playerName` → parkur bölgesini genişlet
+- `/ap collapse` `<block block>` `playerName` → parkur bölgesini daralt
 
 ---
 
