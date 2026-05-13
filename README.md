@@ -52,7 +52,8 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap gke <amount>` `playerName` → adds backward protection
 - `/ap prot[clear]` → shows the current protections status/clear prot status
 - `/ap dontmove <amount>` `playerName` → restricts movement for a certain period of time
-- `/ap wolf up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
+- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
+- `/ap rtp` `PlayerName` allows you to teleport random parkour block
 
 ---
 
@@ -81,8 +82,10 @@ This system allows streamers to create interactive and chaotic parkour gameplay 
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → viewer interaction (push up/down)
-- `/ap prison <amount>` `PLAYERNAME` → the prison system
+- `/ap prison <amount>` `PlayerName` → the prison system
+- `/ap lava ` `PlayerName` → the floor is lava
+- `/ap expand` `<block block>` `PlayerName` → expand the parkour area
+- `/ap collapse` `<block block>` `PlayerName` → collapse the parkour area
 
 ---
 
@@ -134,7 +137,8 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap gke <amount>` `playerName` → geri koruma ekler
 - `/ap prot[clear]` → mevcut koruma durumunu gösterir/mevcut koruma durumunu temizler
 - `/ap dontmove <amount>` `playerName` → belirtilen süre boyunca hareketi kısıtlar
-- `/ap wolf up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
+- `/ap wolf/chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)
+- `/ap rtp` `PlayerName` rastgele parkur bloğuna ışınlar
   
 ---
 
@@ -163,8 +167,10 @@ Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli h
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap chicken/cat up/down <blocks>` `PLAYERNAME` → izleyici etkileşimi (yukarı/aşağı itme)  
 - `/ap prison <amount>` `PLAYERNAME` → hapis sistemi
+- `/ap lava ` `PlayerName` → yer lavdan
+- `/ap expand` `<block block>` `PlayerName` → parkur bölgesini genişlet
+- `/ap collapse` `<block block>` `PlayerName` → parkur bölgesini daralt
 
 ---
 
