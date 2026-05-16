@@ -1,6 +1,7 @@
 package me.arrowdev.arrowsParkour.commands;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
+import me.arrowdev.arrowsParkour.manager.PrisonManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import me.arrowdev.arrowsParkour.task.AnimalMovementTask;
 import me.arrowdev.arrowsParkour.task.WolfMovementTask;
@@ -28,20 +29,81 @@ import java.util.Random;
 public class APCommand implements CommandExecutor {
 
     private final ParkourManager manager;
+    private final PrisonManager prisonManager;
     private final Random random = new Random();
 
-    public APCommand(ParkourManager manager) {
+    public APCommand(ParkourManager manager, PrisonManager prisonManager) {
         this.manager = manager;
+        this.prisonManager = prisonManager;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (args.length == 0) {
-            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et");
+            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et\n§e/ap prison <saniye> <username> <oyuncu> §7- Oyuncuyu hapise at");
             return true;
         }
 
+        // ======================== PRİSON KOMUTU ========================
+        if (args[0].equalsIgnoreCase("prison")) {
+            if (args.length < 4) {
+                sender.sendMessage("§cKullanım: /ap prison <saniye> <username> <oyuncu>");
+                sender.sendMessage("§7Not: Negatif sayı ile süreden eksilt. Örn: /ap prison -10 Steve oyuncu");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                // ★ DÜZELTİLDİ: 0 kontrolü kaldırıldı, negatif sayılara izin verildi
+                // Sadece 0'a eşitse anlamsız olduğu için engelle
+                if (seconds == 0) {
+                    sender.sendMessage("§c0 girilemez! Pozitif = süre ekle, Negatif = süreden eksilt.");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye sayısı gir! (Negatif de olabilir)");
+                return true;
+            }
+
+            String username = args[2];
+            String playerName = args[3];
+
+            Player target = Bukkit.getPlayerExact(playerName);
+            if (target == null) {
+                sender.sendMessage("§cOyuncu bulunamadı: " + playerName);
+                return true;
+            }
+
+            // ★ Negatif sayı girildiyse ama oyuncu hapiste değilse anlamsız
+            if (seconds < 0 && !prisonManager.isInPrison(target)) {
+                sender.sendMessage("§cOyuncu zaten hapiste değil, süreden eksiltme yapılamaz!");
+                return true;
+            }
+
+            // Pozitif sayı ise parkur session kontrolü gerekli (hapishane inşası için)
+            if (seconds > 0) {
+                ParkourSession session = manager.getSession(target);
+                if (session == null && !prisonManager.isInPrison(target)) {
+                    sender.sendMessage("§cOyuncunun parkuru yok, hapishane inşa edilemez!");
+                    return true;
+                }
+            }
+
+            prisonManager.startPrison(target, seconds, username);
+
+            if (seconds > 0) {
+                sender.sendMessage("§a⛓ " + target.getName() + " §e+" + seconds + " §asaniye hapise atıldı/eklendi!");
+            } else {
+                sender.sendMessage("§e⛓ " + target.getName() + " §csüresinden §e" + Math.abs(seconds) + " §csaniye eksildi!");
+            }
+
+            manager.getPlugin().getLogger().info("⛓ Prison: " + target.getName() + " | " + (seconds > 0 ? "+" : "") + seconds + "s | by: " + username);
+            return true;
+        }
+
+        // Prison olmayan komutlar için normal player parsing
         Player p;
 
         if (sender instanceof Player) {
@@ -318,8 +380,7 @@ public class APCommand implements CommandExecutor {
             }
         }
 
-        // ======================== WOLF / CHICKEN / CAT KOMUTLARI ========================
-        // ★ Üç komut da aynı mantıkla çalışıyor, sadece spawn edilen hayvan farklı
+        // ======================== WOLF / CHICKEN / CAT ========================
         if (args[0].equalsIgnoreCase("wolf")
                 || args[0].equalsIgnoreCase("chicken")
                 || args[0].equalsIgnoreCase("cat")) {
@@ -411,7 +472,6 @@ public class APCommand implements CommandExecutor {
 
                 manager.getPlugin().getLogger().info("🐾 " + args[0].toUpperCase() + " → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex);
 
-                // ★ Hangi hayvana göre spawn et
                 LivingEntity animal;
                 String animalEmoji;
 

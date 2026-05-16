@@ -1,6 +1,7 @@
 package me.arrowdev.arrowsParkour.listener;
 
 import me.arrowdev.arrowsParkour.manager.ParkourManager;
+import me.arrowdev.arrowsParkour.manager.PrisonManager;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -27,11 +28,13 @@ import java.util.UUID;
 
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
+    private final PrisonManager prisonManager;
     private final Map<UUID, Integer> lastWinHeight;
     private final Map<UUID, Integer> lastDisplayHeight;
 
-    public ParkourListener(ParkourManager manager) {
+    public ParkourListener(ParkourManager manager, PrisonManager prisonManager) {
         this.manager = manager;
+        this.prisonManager = prisonManager;
         this.lastWinHeight = new HashMap<>();
         this.lastDisplayHeight = new HashMap<>();
     }
@@ -64,7 +67,12 @@ public class ParkourListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
-        manager.removeBossBar(e.getPlayer());
+        Player p = e.getPlayer();
+
+        // ★ Hapisteyse yapıyı temizle, config'e kaydetme
+        prisonManager.onPlayerQuit(p);
+
+        manager.removeBossBar(p);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -87,7 +95,6 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        // ★ hasMount() ile tüm hayvanları kapsıyor (wolf, chicken, cat)
         if (session.hasMount() && session.getMount().getPassengers().contains(p)) {
             event.setCancelled(true);
             return;
@@ -106,7 +113,7 @@ public class ParkourListener implements Listener {
             lastDisplayHeight.put(uuid, heightDifference);
 
             if (heightDifference > lastHeight) {
-                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_HARP, 1f, 1f);
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1f);
             }
         }
 
@@ -133,11 +140,9 @@ public class ParkourListener implements Listener {
         ParkourSession session = manager.getSession(p);
         if (session == null) return;
 
-        // ★ hasMount() ile wolf, chicken, cat hepsi kapsanıyor
         if (session.hasMount() && e.getDismounted() != null
                 && e.getDismounted().equals(session.getMount())) {
 
-            // finish() kasıtlı eject yapıyorsa müdahale etme
             if (session.isMountFinishing()) {
                 return;
             }
