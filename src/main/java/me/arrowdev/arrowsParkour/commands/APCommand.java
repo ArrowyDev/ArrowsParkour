@@ -1,10 +1,8 @@
 package me.arrowdev.arrowsParkour.commands;
 
-import me.arrowdev.arrowsParkour.manager.ParkourManager;
-import me.arrowdev.arrowsParkour.manager.PrisonManager;
+import me.arrowdev.arrowsParkour.manager.*;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import me.arrowdev.arrowsParkour.task.AnimalMovementTask;
-import me.arrowdev.arrowsParkour.task.WolfMovementTask;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -21,8 +19,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.Wolf;
 import org.bukkit.scheduler.BukkitScheduler;
-import org.bukkit.util.Vector;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+import org.bukkit.scheduler.BukkitTask;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import java.util.List;
 import java.util.Random;
 
@@ -30,18 +33,27 @@ public class APCommand implements CommandExecutor {
 
     private final ParkourManager manager;
     private final PrisonManager prisonManager;
+    private final LavaManager lavaManager;
     private final Random random = new Random();
+    private final IceManager iceManager;
+    private final InvisibleManager invisibleManager;
 
-    public APCommand(ParkourManager manager, PrisonManager prisonManager) {
+    private final Map<UUID, BukkitTask> rrTasks = new HashMap<>();
+
+    public APCommand(ParkourManager manager, PrisonManager prisonManager,
+                     LavaManager lavaManager, IceManager iceManager,InvisibleManager invisibleManager) {
         this.manager = manager;
         this.prisonManager = prisonManager;
+        this.lavaManager = lavaManager;
+        this.iceManager = iceManager;
+        this.invisibleManager = invisibleManager;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (args.length == 0) {
-            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et\n§e/ap prison <saniye> <username> <oyuncu> §7- Oyuncuyu hapise at");
+            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et\n§e/ap prison <saniye> <username> §7- Oyuncuyu hapise at\n§e/ap lava <saniye> §7- Lav yükseltmeyi başlat\n§e/ap lavastop §7- Lavayı durdur\n§e/ap blind <saniye> §7- Oyuncuyu kör et\n§e/ap blind <saniye> §7- Oyuncuyu kör et\n§e/ap rr §7- Kafayı rastgele döndür\n§e/ap jump §7- Oyuncuyu zıplat\\n§e/ap jump [oyuncu] §7- Oyuncuyu zıplat\n§e/ap drunk <saniye> §7- Oyuncuyu sarhoş et\\n§e/ap drunk <saniye> [oyuncu] §7- Oyuncuyu sarhoş et\n§e/ap ice <saniye> §7- Parkuru buza çevir\n§e/ap invisible <saniye> §7- Parkuru görünmez yap");
             return true;
         }
 
@@ -56,8 +68,6 @@ public class APCommand implements CommandExecutor {
             int seconds;
             try {
                 seconds = Integer.parseInt(args[1]);
-                // ★ DÜZELTİLDİ: 0 kontrolü kaldırıldı, negatif sayılara izin verildi
-                // Sadece 0'a eşitse anlamsız olduğu için engelle
                 if (seconds == 0) {
                     sender.sendMessage("§c0 girilemez! Pozitif = süre ekle, Negatif = süreden eksilt.");
                     return true;
@@ -76,13 +86,11 @@ public class APCommand implements CommandExecutor {
                 return true;
             }
 
-            // ★ Negatif sayı girildiyse ama oyuncu hapiste değilse anlamsız
             if (seconds < 0 && !prisonManager.isInPrison(target)) {
                 sender.sendMessage("§cOyuncu zaten hapiste değil, süreden eksiltme yapılamaz!");
                 return true;
             }
 
-            // Pozitif sayı ise parkur session kontrolü gerekli (hapishane inşası için)
             if (seconds > 0) {
                 ParkourSession session = manager.getSession(target);
                 if (session == null && !prisonManager.isInPrison(target)) {
@@ -100,6 +108,364 @@ public class APCommand implements CommandExecutor {
             }
 
             manager.getPlugin().getLogger().info("⛓ Prison: " + target.getName() + " | " + (seconds > 0 ? "+" : "") + seconds + "s | by: " + username);
+            return true;
+        }
+
+        // ======================== BLIND KOMUTU ========================
+        if (args[0].equalsIgnoreCase("blind")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap blind <saniye> [oyuncu]");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap blind <saniye> <oyuncu>");
+                return true;
+            }
+
+            int durationTicks = seconds * 20;
+
+            target.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.BLINDNESS,
+                    durationTicks,
+                    0,      // seviye 0 yeterli
+                    false,  // ambient yok
+                    false,  // partikül yok
+                    false   // ikon gizli
+            ));
+
+            target.sendTitle(
+                    "§8🕶 KÖRLEŞME",
+                    "§7" + seconds + " saniye boyunca göremezsin!",
+                    10, 50, 10
+            );
+            target.sendMessage("§8🕶 " + seconds + " saniye körleştin!");
+            sender.sendMessage("§a🕶 " + target.getName() + " §e" + seconds + " §asaniye körleştirildi!");
+
+            manager.getPlugin().getLogger().info(
+                    "🕶 Blind: " + target.getName() + " | " + seconds + "s | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== RR KOMUTU ========================
+        if (args[0].equalsIgnoreCase("rr")) {
+            Player target;
+
+            // Eğer oyuncu ismi girilmişse
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            }
+            // Oyuncu ismi girilmemişse ve komutu yazan oyuncuysa
+            else if (sender instanceof Player) {
+                target = (Player) sender;
+            }
+            // Konsoldan isimsiz girilmişse
+            else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap rr <oyuncu>");
+                return true;
+            }
+
+            // Oyuncunun mevcut konumunu al
+            Location loc = target.getLocation().clone();
+
+            // -180 ile 180 arası rastgele yatay (sola/sağa) açı
+            float randomYaw = (random.nextFloat() * 360f) - 180f;
+
+            loc.setYaw(randomYaw);
+            loc.setPitch(0f); // 0 = dümdüz karşıya bakar (yukarı/aşağı bakmaz)
+
+            // Oyuncuyu aynı olduğu yere, sadece kafa açısı değişmiş olarak ışınla
+            target.teleport(loc);
+
+            target.sendMessage("§c🌀 Kafan aniden başka bir yöne döndü!");
+
+            // Kendisi dışında birine uygulandıysa mesaj gönder
+            if (!sender.equals(target)) {
+                sender.sendMessage("§a🌀 " + target.getName() + " adlı oyuncunun kafası rastgele döndürüldü!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "🌀 RR: " + target.getName() + " | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== JUMP KOMUTU ========================
+        if (args[0].equalsIgnoreCase("jump")) {
+            Player target;
+
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap jump <oyuncu>");
+                return true;
+            }
+
+            // Oyuncu havadaysa zıplatma
+            if (!target.isOnGround()) {
+                sender.sendMessage("§cOyuncu havada, zıplatılamaz!");
+                return true;
+            }
+
+            // Normal zıplama velocity değeri
+            org.bukkit.util.Vector velocity = target.getVelocity();
+            velocity.setY(0.92);
+            target.setVelocity(velocity);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§a⬆ " + target.getName() + " zıplatıldı!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "⬆ Jump: " + target.getName() + " | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== DRUNK KOMUTU ========================
+        if (args[0].equalsIgnoreCase("drunk")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap drunk <saniye> [oyuncu]");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap drunk <saniye> <oyuncu>");
+                return true;
+            }
+
+            int durationTicks = seconds * 20;
+
+            // 1.20+ → NAUSEA | Eski sürümler → CONFUSION
+            target.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.NAUSEA,
+                    durationTicks,
+                    0,
+                    false,
+                    false,
+                    false
+            ));
+
+            target.sendTitle(
+                    "§2🍺 SARHOŞ",
+                    "§7" + seconds + " saniye boyunca kafan dönüyor!",
+                    10, 50, 10
+            );
+            target.sendMessage("§2🍺 " + seconds + " saniye sarhoş oldun!");
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§a🍺 " + target.getName() + " §e" + seconds + " §asaniye sarhoş edildi!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "🍺 Drunk: " + target.getName() + " | " + seconds + "s | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== ICE KOMUTU ========================
+        if (args[0].equalsIgnoreCase("ice")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap ice <saniye> [oyuncu]");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap ice <saniye> <oyuncu>");
+                return true;
+            }
+
+            iceManager.startIce(target, seconds);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§b🧊 " + target.getName()
+                        + " §e" + seconds + " §bsaniye parkuru buza döndürüldü!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "🧊 Ice: " + target.getName() + " | " + seconds + "s | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== INVISIBLE KOMUTU ========================
+        if (args[0].equalsIgnoreCase("invisible")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap invisible <saniye> [oyuncu]");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap invisible <saniye> <oyuncu>");
+                return true;
+            }
+
+            invisibleManager.startInvisible(target, seconds);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§7👻 " + target.getName() + " §e" + seconds + " §7saniye parkuru görünmez yapıldı!");
+            }
+            return true;
+        }
+
+        // ======================== LAVA KOMUTU ========================
+        if (args[0].equalsIgnoreCase("lava")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap lava <saniye> [oyuncu]");
+                sender.sendMessage("§7Saniye = her kaç saniyede bir lav 1 seviye yükselir");
+                return true;
+            }
+
+            int intervalSeconds;
+            try {
+                intervalSeconds = Integer.parseInt(args[1]);
+                if (intervalSeconds <= 0) {
+                    sender.sendMessage("§cSaniye 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap lava <saniye> <oyuncu>");
+                return true;
+            }
+
+            int intervalTicks = intervalSeconds * 20;
+            lavaManager.startLava(target, intervalTicks);
+            sender.sendMessage("§c🌋 " + target.getName() + " için lav yükseltme başlatıldı! §7(Her " + intervalSeconds + " saniyede 1 seviye)");
+            return true;
+        }
+
+        // ======================== LAVASTOP KOMUTU ========================
+        if (args[0].equalsIgnoreCase("lavastop")) {
+            Player target;
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap lavastop <oyuncu>");
+                return true;
+            }
+
+            if (!lavaManager.hasLava(target)) {
+                sender.sendMessage("§cBu oyuncunun aktif lav yükseltmesi yok!");
+                return true;
+            }
+
+            lavaManager.stopLava(target);
+            sender.sendMessage("§a🌋 " + target.getName() + " için lav durduruldu ve temizlendi!");
             return true;
         }
 
@@ -133,6 +499,10 @@ public class APCommand implements CommandExecutor {
 
         // CLEAR
         if (args[0].equalsIgnoreCase("clear")) {
+            // Lav aktifse önce durdur
+            if (lavaManager.hasLava(p)) {
+                lavaManager.stopLava(p);
+            }
             manager.clearParkour(p);
             return true;
         }
@@ -416,7 +786,6 @@ public class APCommand implements CommandExecutor {
                     return true;
                 }
 
-                // Önceki mount varsa temizle
                 if (session.hasMount()) {
                     session.setMountFinishing(true);
                     session.getMount().eject();
@@ -705,7 +1074,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // TNT
+        // ★ TNT — Güç azaltıldı + Duvar düzeltmesi
         if (args[0].equalsIgnoreCase("tnt")) {
             Player target = null;
             String displayName = null;
@@ -717,16 +1086,20 @@ public class APCommand implements CommandExecutor {
                 }
             }
 
-            Location tntLoc;
+            // ★ Hedef oyuncuyu belirle
+            Player tntTarget = (target != null) ? target : p;
 
-            if (target != null) {
-                tntLoc = target.getLocation().add(0, 1, 0);
-            } else {
-                tntLoc = p.getLocation().add(0, 1, 0);
+            // ★ DUVAR DÜZELTMESİ: Güvenli spawn noktası bul
+            Location tntLoc = tntTarget.getLocation().add(0, 1, 0);
+            if (tntLoc.getBlock().getType().isSolid()) {
+                tntLoc = tntTarget.getEyeLocation();
+            }
+            if (tntLoc.getBlock().getType().isSolid()) {
+                tntLoc = tntTarget.getLocation();
             }
 
             TNTPrimed tnt = p.getWorld().spawn(tntLoc, TNTPrimed.class);
-            tnt.setFuseTicks(80);
+            tnt.setFuseTicks(10);
             tnt.setGravity(true);
 
             ArmorStand armorStand = p.getWorld().spawn(tntLoc.clone().add(0, -0.5, 0), ArmorStand.class);

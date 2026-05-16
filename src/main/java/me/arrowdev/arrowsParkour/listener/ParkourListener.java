@@ -1,7 +1,6 @@
 package me.arrowdev.arrowsParkour.listener;
 
-import me.arrowdev.arrowsParkour.manager.ParkourManager;
-import me.arrowdev.arrowsParkour.manager.PrisonManager;
+import me.arrowdev.arrowsParkour.manager.*;
 import me.arrowdev.arrowsParkour.model.ParkourSession;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -14,13 +13,17 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,14 +32,32 @@ import java.util.UUID;
 public class ParkourListener implements Listener {
     private final ParkourManager manager;
     private final PrisonManager prisonManager;
+    private final LavaManager lavaManager;
     private final Map<UUID, Integer> lastWinHeight;
     private final Map<UUID, Integer> lastDisplayHeight;
+    private final IceManager iceManager;
+    private final InvisibleManager invisibleManager;
 
-    public ParkourListener(ParkourManager manager, PrisonManager prisonManager) {
+    public ParkourListener(ParkourManager manager, PrisonManager prisonManager,
+                           LavaManager lavaManager,IceManager iceManager,InvisibleManager invisibleManager) {
         this.manager = manager;
         this.prisonManager = prisonManager;
+        this.lavaManager = lavaManager;
         this.lastWinHeight = new HashMap<>();
         this.lastDisplayHeight = new HashMap<>();
+        this.iceManager = iceManager;
+        this.invisibleManager = invisibleManager;
+    }
+
+    // ★ Lav akmasını engelle — parkur dünyasında lav akmaz
+    @EventHandler
+    public void onBlockFromTo(BlockFromToEvent event) {
+        Block block = event.getBlock();
+        if (block.getType() == Material.LAVA) {
+            if (manager.isParkourWorld(block.getWorld())) {
+                event.setCancelled(true);
+            }
+        }
     }
 
     @EventHandler
@@ -45,9 +66,13 @@ public class ParkourListener implements Listener {
 
         if (manager.isInParkourWorld(p)) {
             manager.createOrUpdateBossBar(p);
+            // ★ Parkur dünyasına girince sonsuz doygunluk ver
+            applySaturation(p);
         } else {
             manager.hideBossBar(p);
             manager.cancelCountdown(p);
+            // ★ Parkur dünyasından çıkınca doygunluğu kaldır
+            removeSaturation(p);
         }
     }
 
@@ -59,6 +84,8 @@ public class ParkourListener implements Listener {
         Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
             if (manager.isInParkourWorld(p)) {
                 manager.createOrUpdateBossBar(p);
+                // ★ Girişte parkur dünyasındaysa doygunluk ver
+                applySaturation(p);
             } else {
                 manager.hideBossBar(p);
             }
@@ -69,10 +96,24 @@ public class ParkourListener implements Listener {
     public void onQuit(PlayerQuitEvent e) {
         Player p = e.getPlayer();
 
-        // ★ Hapisteyse yapıyı temizle, config'e kaydetme
+        lavaManager.onPlayerQuit(p);
         prisonManager.onPlayerQuit(p);
-
+        iceManager.onPlayerQuit(p);
+        invisibleManager.onPlayerQuit(p);
         manager.removeBossBar(p);
+    }
+
+    @EventHandler
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player p = event.getEntity();
+
+        lavaManager.onPlayerDeath(p);
+        iceManager.onPlayerDeath(p);
+        invisibleManager.onPlayerDeath(p);
+
+        if (prisonManager.isInPrison(p)) {
+            prisonManager.freePrisonerSilently(p);
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -221,19 +262,32 @@ public class ParkourListener implements Listener {
         manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
     }
 
+    // ★ TNT gücü azıcık azaltıldı: 6.0 → 5.0, Y boost 0.8 → 0.6
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         if (!manager.isParkourWorld(event.getEntity().getWorld())) return;
 
         if (event.getEntity() instanceof TNTPrimed) {
             event.blockList().clear();
+
+            Location explosionLoc = event.getEntity().getLocation();
+            explosionLoc.getWorld().playSound(explosionLoc, Sound.ENTITY_GENERIC_EXPLODE, 2f, 0.5f);
+
             for (Player player : event.getEntity().getWorld().getPlayers()) {
-                double distance = player.getLocation().distance(event.getEntity().getLocation());
-                if (distance < 20) {
+                double distance = player.getLocation().distance(explosionLoc);
+                if (distance < 30) {
                     org.bukkit.util.Vector direction = player.getLocation().toVector()
-                            .subtract(event.getEntity().getLocation().toVector())
+                            .subtract(explosionLoc.toVector())
                             .normalize();
-                    player.setVelocity(direction.multiply(3));
+
+                    // ★ Güç: 6.0 → 5.0 (azıcık azaltıldı)
+                    double power = 5.0 * (1.0 - (distance / 30.0));
+                    power = Math.max(power, 1.0);
+
+                    // ★ Yukarı boost: 0.8 → 0.6 (azıcık azaltıldı)
+                    direction.setY(direction.getY() + 0.6);
+
+                    player.setVelocity(direction.multiply(power));
                 }
             }
             event.setYield(0f);
@@ -250,5 +304,21 @@ public class ParkourListener implements Listener {
                 event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
             event.setCancelled(true);
         }
+    }
+
+    // ★ Doygunluk efekti yardımcı methodları
+    private void applySaturation(Player player) {
+        player.addPotionEffect(new PotionEffect(
+                PotionEffectType.SATURATION,
+                Integer.MAX_VALUE,  // sonsuz süre
+                0,                   // seviye 0 (yeterli)
+                false,              // partiküller gizli
+                false,              // ikon gizli
+                false               // ambient yok
+        ));
+    }
+
+    private void removeSaturation(Player player) {
+        player.removePotionEffect(PotionEffectType.SATURATION);
     }
 }

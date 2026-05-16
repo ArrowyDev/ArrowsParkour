@@ -202,6 +202,30 @@ public class PrisonManager {
             player.teleport(session.getSavedLocation());
             player.sendTitle("§a✓ Serbest!", "§7Eski konumuna döndün.", 10, 40, 20);
             player.sendActionBar("§aSerbest kaldın!");
+
+            // ★ WIN NOKTASINA DÖNDÜYSE SAYACI BAŞLAT
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (!player.isOnline()) return;
+
+                ParkourManager parkourManager = plugin.getParkourManager();
+                if (parkourManager == null) return;
+
+                me.arrowdev.arrowsParkour.model.ParkourSession parkourSession =
+                        parkourManager.getSession(player);
+                if (parkourSession == null) return;
+
+                if (!parkourManager.isInParkourWorld(player)) return;
+
+                int currentY = player.getLocation().getBlockY();
+                int startY = parkourSession.getStartY();
+                int heightDiff = currentY - startY;
+
+                if (heightDiff >= 100) {
+                    parkourManager.startCountdownIfNeeded(player, heightDiff);
+                    plugin.getLogger().info("✓ Hapis sonrası win noktası tespit edildi, sayaç başlatıldı: "
+                            + player.getName() + " | yükseklik farkı: " + heightDiff);
+                }
+            }, 5L); // 5 tick bekle — teleport yerleşsin
         }
 
         sessions.remove(uuid);

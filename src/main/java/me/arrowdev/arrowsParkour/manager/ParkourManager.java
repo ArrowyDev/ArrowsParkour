@@ -468,6 +468,13 @@ public class ParkourManager {
                 plugin.saveConfig();
                 createOrUpdateBossBar(player);
 
+                // ★ Win alındığında lav varsa durdur
+                LavaManager lavaManager = plugin.getLavaManager();
+                if (lavaManager != null && lavaManager.hasLava(player)) {
+                    lavaManager.stopLava(player);
+                    player.sendMessage("§a🌋 Win aldın! Lav durduruldu.");
+                }
+
                 BukkitTask t = countdownTasks.remove(uuid);
                 if (t != null) t.cancel();
                 countdownSeconds.remove(uuid);
