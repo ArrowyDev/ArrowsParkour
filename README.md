@@ -54,6 +54,7 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap dontmove <amount>` `playerName` → restricts movement for a certain period of time
 - `/ap wolf/chicken/cat up/down <blocks>` `playerName` → viewer interaction (push up/down)
 - `/ap rtp` `playerName` allows you to teleport random parkour block
+- `/ap prison <amount>` `username` `playerName` → the prison system
 
 ---
 
@@ -82,7 +83,6 @@ This system allows streamers to create interactive and chaotic parkour gameplay 
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap prison <amount>` `playerName` → the prison system
 - `/ap lava ` `playerName` → the floor is lava
 - `/ap expand` `<block block>` `playerName` → expand the parkour area
 - `/ap collapse` `<block block>` `playerName` → collapse the parkour area
@@ -139,6 +139,7 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap dontmove <amount>` `playerName` → belirtilen süre boyunca hareketi kısıtlar
 - `/ap wolf/chicken/cat up/down <blocks>` `playerName` → izleyici etkileşimi (yukarı/aşağı itme)
 - `/ap rtp` `playerName` rastgele parkur bloğuna ışınlar
+- `/ap prison <amount>` `username` `playerName` → hapis sistemi
   
 ---
 
