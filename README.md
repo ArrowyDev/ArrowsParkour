@@ -55,6 +55,7 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap wolf/chicken/cat up/down <blocks>` `playerName` → viewer interaction (push up/down)
 - `/ap rtp` `playerName` allows you to teleport random parkour block
 - `/ap prison <amount>` `username` `playerName` → the prison system
+- `/ap lava ` `<amount>` `playerName` → the lava is rising
 
 ---
 
@@ -83,9 +84,14 @@ This system allows streamers to create interactive and chaotic parkour gameplay 
 
 ## 🚧 Work-in-Progress Features
 
-- `/ap lava ` `playerName` → the floor is lava
-- `/ap expand` `<block block>` `playerName` → expand the parkour area
-- `/ap collapse` `<block block>` `playerName` → collapse the parkour area
+- `/ap blind` `<amount>` → make blind the palyer
+- `/ap rr` → rotate player head randomly
+- `/ap setheight` `<amount>` → set the parkour area high
+- `/ap jump` → make the player jump
+- `/ap ice` `<amount>` → make parkour blocks ice
+- `/ap invisible` `<amount>` → make parkour blocks invisible
+- `/ap drunk` `<amount>` → make player drunk
+- `/ap gravity` `<low|high|reverse>` → change gravity
 
 ---
 
@@ -140,6 +146,7 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap wolf/chicken/cat up/down <blocks>` `playerName` → izleyici etkileşimi (yukarı/aşağı itme)
 - `/ap rtp` `playerName` rastgele parkur bloğuna ışınlar
 - `/ap prison <amount>` `username` `playerName` → hapis sistemi
+- `/ap lava ` `<amount>` `playerName` → lav yükseliyor
   
 ---
 
@@ -168,10 +175,14 @@ Bu sistem sayesinde yayınlar daha eğlenceli, kaotik ve izleyici etkileşimli h
 
 ## 🚧 Yapım Aşamasındaki Özellikler
 
-- `/ap prison <amount>` `playerName` → hapis sistemi
-- `/ap lava ` `playerName` → yer lavdan
-- `/ap expand` `<block block>` `playerName` → parkur bölgesini genişlet
-- `/ap collapse` `<block block>` `playerName` → parkur bölgesini daralt
+- `/ap blind` `<amount>` → oyuncuyu kör yap
+- `/ap rr` → oyuncu kafasını rastgele döndür
+- `/ap setheight` `<amount>` → parkurun yüksekliğini ayarla
+- `/ap jump` → oyuncuyu zıplat
+- `/ap ice` `<amount>` → parkur bloklarını buz yap
+- `/ap invisible` `<amount>` → parkur bloklarını görnümez yap
+- `/ap drunk` `<amount>` → oyuncuyu sarhoş yap
+- `/ap gravity` `<low|high|reverse>` → yerçekimini değiştir
 
 ---
 
