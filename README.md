@@ -62,6 +62,8 @@ Arrow's Parkour is a Minecraft plugin focused on vertical parkour gameplay with 
 - `/ap ice` `<amount>` `playerName` → make parkour blocks ice
 - `/ap invisible` `<amount>` `playerName` → make parkour blocks invisible
 - `/ap drunk` `<amount>` `playerName` → make player drunk
+- `/ap arrowrain` `<amount>` `playerName` → make the arrow rain
+- `/ap chaos` `<amount>` `username` `playerName` → start the chaos mode
 
 ---
 
@@ -153,6 +155,8 @@ Arrow's Parkour, canlı yayın etkinlikleri için etkileşimli komutlarla dikey 
 - `/ap ice` `<amount>` `playerName` → parkur bloklarını buz yap
 - `/ap invisible` `<amount>` `playerName` → parkur bloklarını görnümez yap
 - `/ap drunk` `<amount>` `playerName` → oyuncuyu sarhoş yap
+- `/ap arrowrain` `<amount>` `playerName` → ok yağmuru başlat
+- `/ap chaos` `<amount>` `username` `playerName` → kaos modunu başlat
   
 ---
 
