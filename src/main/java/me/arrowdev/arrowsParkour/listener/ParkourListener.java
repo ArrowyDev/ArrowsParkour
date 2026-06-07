@@ -7,6 +7,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
@@ -37,9 +39,13 @@ public class ParkourListener implements Listener {
     private final Map<UUID, Integer> lastDisplayHeight;
     private final IceManager iceManager;
     private final InvisibleManager invisibleManager;
+    private final ArrowRainManager arrowRainManager;
+    private final ChaosManager chaosManager;
 
     public ParkourListener(ParkourManager manager, PrisonManager prisonManager,
-                           LavaManager lavaManager,IceManager iceManager,InvisibleManager invisibleManager) {
+                           LavaManager lavaManager, IceManager iceManager,
+                           InvisibleManager invisibleManager,
+                           ArrowRainManager arrowRainManager,ChaosManager chaosManager) {   // ★ YENİ parametre
         this.manager = manager;
         this.prisonManager = prisonManager;
         this.lavaManager = lavaManager;
@@ -47,9 +53,10 @@ public class ParkourListener implements Listener {
         this.lastDisplayHeight = new HashMap<>();
         this.iceManager = iceManager;
         this.invisibleManager = invisibleManager;
+        this.arrowRainManager = arrowRainManager;
+        this.chaosManager = chaosManager;
     }
 
-    // ★ Lav akmasını engelle — parkur dünyasında lav akmaz
     @EventHandler
     public void onBlockFromTo(BlockFromToEvent event) {
         Block block = event.getBlock();
@@ -66,12 +73,10 @@ public class ParkourListener implements Listener {
 
         if (manager.isInParkourWorld(p)) {
             manager.createOrUpdateBossBar(p);
-            // ★ Parkur dünyasına girince sonsuz doygunluk ver
             applySaturation(p);
         } else {
             manager.hideBossBar(p);
             manager.cancelCountdown(p);
-            // ★ Parkur dünyasından çıkınca doygunluğu kaldır
             removeSaturation(p);
         }
     }
@@ -84,7 +89,6 @@ public class ParkourListener implements Listener {
         Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
             if (manager.isInParkourWorld(p)) {
                 manager.createOrUpdateBossBar(p);
-                // ★ Girişte parkur dünyasındaysa doygunluk ver
                 applySaturation(p);
             } else {
                 manager.hideBossBar(p);
@@ -100,7 +104,14 @@ public class ParkourListener implements Listener {
         prisonManager.onPlayerQuit(p);
         iceManager.onPlayerQuit(p);
         invisibleManager.onPlayerQuit(p);
+        arrowRainManager.onPlayerQuit(p);
+        chaosManager.onPlayerQuit(p);
         manager.removeBossBar(p);
+
+        // ★ Kaos kırmızı ekran temizliği
+        try {
+            p.setWorldBorder(null);
+        } catch (Exception ignored) {}
     }
 
     @EventHandler
@@ -110,10 +121,17 @@ public class ParkourListener implements Listener {
         lavaManager.onPlayerDeath(p);
         iceManager.onPlayerDeath(p);
         invisibleManager.onPlayerDeath(p);
+        arrowRainManager.onPlayerDeath(p);
+        chaosManager.onPlayerDeath(p);
 
         if (prisonManager.isInPrison(p)) {
             prisonManager.freePrisonerSilently(p);
         }
+
+        // ★ Kaos kırmızı ekran temizliği
+        try {
+            p.setWorldBorder(null);
+        } catch (Exception ignored) {}
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -175,6 +193,47 @@ public class ParkourListener implements Listener {
     }
 
     @EventHandler
+    public void onBlockFade(org.bukkit.event.block.BlockFadeEvent event) {
+        Block block = event.getBlock();
+
+        // Sadece buz veya kar erimesini engelle
+        if (block.getType() != Material.ICE
+                && block.getType() != Material.FROSTED_ICE
+                && block.getType() != Material.SNOW_BLOCK
+                && block.getType() != Material.SNOW) return;
+
+        // Parkur dünyasında değilse geç
+        if (!manager.isParkourWorld(block.getWorld())) return;
+
+        // Bu blok herhangi bir oyuncunun parkuruna ait mi?
+        FileConfiguration cfg = manager.getPlugin().getConfig();
+        ConfigurationSection parkourSection = cfg.getConfigurationSection("parkours");
+        if (parkourSection == null) return;
+
+        for (String uuidStr : parkourSection.getKeys(false)) {
+            int baseX = cfg.getInt("parkours." + uuidStr + ".baseX");
+            int baseZ = cfg.getInt("parkours." + uuidStr + ".baseZ");
+            int baseY = cfg.getInt("parkours." + uuidStr + ".baseY");
+            String worldName = cfg.getString("parkours." + uuidStr + ".world");
+
+            if (worldName == null) continue;
+            if (!block.getWorld().getName().equals(worldName)) continue;
+
+            int bx = block.getX();
+            int by = block.getY();
+            int bz = block.getZ();
+
+            // Blok parkur alanı içinde mi? (17x17 alan + yükseklik)
+            if (bx >= baseX && bx < baseX + 17
+                    && bz >= baseZ && bz < baseZ + 17
+                    && by >= baseY) {
+                event.setCancelled(true);   // ★ Erimesini engelle
+                return;
+            }
+        }
+    }
+
+    @EventHandler
     public void onDismount(org.bukkit.event.entity.EntityDismountEvent e) {
         if (!(e.getEntity() instanceof Player p)) return;
 
@@ -184,9 +243,7 @@ public class ParkourListener implements Listener {
         if (session.hasMount() && e.getDismounted() != null
                 && e.getDismounted().equals(session.getMount())) {
 
-            if (session.isMountFinishing()) {
-                return;
-            }
+            if (session.isMountFinishing()) return;
 
             e.setCancelled(true);
 
@@ -259,10 +316,11 @@ public class ParkourListener implements Listener {
         Material material = block.getType();
         session.addBlock(loc, material);
 
-        manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ() + " -> " + material.name());
+        manager.getPlugin().getLogger().info("✅ Blok yerleştirildi: "
+                + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ()
+                + " -> " + material.name());
     }
 
-    // ★ TNT gücü azıcık azaltıldı: 6.0 → 5.0, Y boost 0.8 → 0.6
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent event) {
         if (!manager.isParkourWorld(event.getEntity().getWorld())) return;
@@ -280,13 +338,10 @@ public class ParkourListener implements Listener {
                             .subtract(explosionLoc.toVector())
                             .normalize();
 
-                    // ★ Güç: 6.0 → 5.0 (azıcık azaltıldı)
                     double power = 5.0 * (1.0 - (distance / 30.0));
                     power = Math.max(power, 1.0);
 
-                    // ★ Yukarı boost: 0.8 → 0.6 (azıcık azaltıldı)
                     direction.setY(direction.getY() + 0.6);
-
                     player.setVelocity(direction.multiply(power));
                 }
             }
@@ -306,15 +361,11 @@ public class ParkourListener implements Listener {
         }
     }
 
-    // ★ Doygunluk efekti yardımcı methodları
     private void applySaturation(Player player) {
         player.addPotionEffect(new PotionEffect(
                 PotionEffectType.SATURATION,
-                Integer.MAX_VALUE,  // sonsuz süre
-                0,                   // seviye 0 (yeterli)
-                false,              // partiküller gizli
-                false,              // ikon gizli
-                false               // ambient yok
+                Integer.MAX_VALUE, 0,
+                false, false, false
         ));
     }
 

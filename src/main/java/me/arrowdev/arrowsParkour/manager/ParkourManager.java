@@ -275,7 +275,7 @@ public class ParkourManager {
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 if (x == minX || x == maxX || z == minZ || z == maxZ) {
-                    for (int y = baseY; y <= baseY + MAX_STEPS + 10; y++) {
+                    for (int y = baseY; y <= world.getMaxHeight() - 1; y++) {
                         Location b = new Location(world, baseX + x, y, baseZ + z);
                         b.getBlock().setType(Material.BARRIER);
                         session.addBlock(b, Material.BARRIER);
@@ -467,6 +467,12 @@ public class ParkourManager {
                 cfg.set(path, currentWins + 1);
                 plugin.saveConfig();
                 createOrUpdateBossBar(player);
+
+                ChaosManager chaosManager = plugin.getChaosManager();
+                if (chaosManager != null && chaosManager.hasChaos(player)) {
+                    chaosManager.stopChaos(player, false);
+                    player.sendMessage("§a☠ Win aldın! Kaos modu iptal edildi.");
+                }
 
                 // ★ Win alındığında lav varsa durdur
                 LavaManager lavaManager = plugin.getLavaManager();

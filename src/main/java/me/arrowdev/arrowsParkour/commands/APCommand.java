@@ -7,27 +7,18 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
+import org.bukkit.WorldBorder;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.entity.ArmorStand;
-import org.bukkit.entity.Cat;
-import org.bukkit.entity.Chicken;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.TNTPrimed;
-import org.bukkit.entity.Wolf;
+import org.bukkit.entity.*;
 import org.bukkit.scheduler.BukkitScheduler;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class APCommand implements CommandExecutor {
 
@@ -37,23 +28,180 @@ public class APCommand implements CommandExecutor {
     private final Random random = new Random();
     private final IceManager iceManager;
     private final InvisibleManager invisibleManager;
+    private final ArrowRainManager arrowRainManager;
+    private final ChaosManager chaosManager;
 
     private final Map<UUID, BukkitTask> rrTasks = new HashMap<>();
 
+    // ★ Kaos cleanup task'larını izlemek için
+    private final Map<UUID, BukkitTask> chaosTasks = new HashMap<>();
+
     public APCommand(ParkourManager manager, PrisonManager prisonManager,
-                     LavaManager lavaManager, IceManager iceManager,InvisibleManager invisibleManager) {
+                     LavaManager lavaManager, IceManager iceManager,
+                     InvisibleManager invisibleManager,
+                     ArrowRainManager arrowRainManager,ChaosManager chaosManager) {
         this.manager = manager;
         this.prisonManager = prisonManager;
         this.lavaManager = lavaManager;
         this.iceManager = iceManager;
         this.invisibleManager = invisibleManager;
+        this.arrowRainManager = arrowRainManager;
+        this.chaosManager = chaosManager;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
         if (args.length == 0) {
-            sender.sendMessage("§6=== Arrow's Parkour ===\n§e/ap create §7- Parkur oluştur\n§e/ap clear §7- Parkuru temizle\n§e/ap tp §7- Ortaya ışınlan\n§e/ap rtp §7- Rastgele bloğa ışınlan\n§e/ap tnt {username} §7- TNT yolla\n§e/ap reset §7- İlerlemeni sıfırla\n§e/ap win §7- Zirveye ışınlan\n§e/ap winc §7- Win sayısını göster\n§e/ap winadd <sayı> §7- Win ekle\n§e/ap winremove <sayı> §7- Win eksilt\n§e/ap winclear §7- Win'leri sıfırla\n§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n§e/ap save §7- WorldEdit değişikliklerini kaydet\n§e/ap ike <sayı> §7- İleri koruma ekle\n§e/ap gke <sayı> §7- Geri koruma ekle\n§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n§e/ap cat <up|down> <blok> §7- Kedi ile hareket et\n§e/ap prison <saniye> <username> §7- Oyuncuyu hapise at\n§e/ap lava <saniye> §7- Lav yükseltmeyi başlat\n§e/ap lavastop §7- Lavayı durdur\n§e/ap blind <saniye> §7- Oyuncuyu kör et\n§e/ap blind <saniye> §7- Oyuncuyu kör et\n§e/ap rr §7- Kafayı rastgele döndür\n§e/ap jump §7- Oyuncuyu zıplat\\n§e/ap jump [oyuncu] §7- Oyuncuyu zıplat\n§e/ap drunk <saniye> §7- Oyuncuyu sarhoş et\\n§e/ap drunk <saniye> [oyuncu] §7- Oyuncuyu sarhoş et\n§e/ap ice <saniye> §7- Parkuru buza çevir\n§e/ap invisible <saniye> §7- Parkuru görünmez yap");
+            sender.sendMessage("§6=== Arrow's Parkour ===\n"
+                    + "§e/ap create §7- Parkur oluştur\n"
+                    + "§e/ap clear §7- Parkuru temizle\n"
+                    + "§e/ap tp §7- Ortaya ışınlan\n"
+                    + "§e/ap rtp §7- Rastgele bloğa ışınlan\n"
+                    + "§e/ap tnt <username> §7- TNT yolla\n"
+                    + "§e/ap reset §7- İlerlemeni sıfırla\n"
+                    + "§e/ap win §7- Zirveye ışınlan\n"
+                    + "§e/ap winc §7- Win sayısını göster\n"
+                    + "§e/ap winadd <sayı> §7- Win ekle\n"
+                    + "§e/ap winremove <sayı> §7- Win eksilt\n"
+                    + "§e/ap winclear §7- Win'leri sıfırla\n"
+                    + "§e/ap area <true/false> §7- Terrain düzenlemesini aç/kapat\n"
+                    + "§e/ap save §7- WorldEdit değişikliklerini kaydet\n"
+                    + "§e/ap ike <sayı> §7- İleri koruma ekle\n"
+                    + "§e/ap gke <sayı> §7- Geri koruma ekle\n"
+                    + "§e/ap prot [clear] §7- Koruma durumunu göster/temizle\n"
+                    + "§e/ap dontmove <sayı> §7- Saniye boyunca hareketi engelle\n"
+                    + "§e/ap wolf <up|down> <blok> §7- Kurt ile hareket et\n"
+                    + "§e/ap chicken <up|down> <blok> §7- Tavuk ile hareket et\n"
+                    + "§e/ap cat <up|down> <blok> §7- Kedi ile hareket et\n"
+                    + "§e/ap prison <saniye> <username> [oyuncu] §7- Oyuncuyu hapise at\n"
+                    + "§e/ap lava <saniye> §7- Lav yükseltmeyi başlat\n"
+                    + "§e/ap lavastop §7- Lavayı durdur\n"
+                    + "§e/ap blind <saniye> [oyuncu] §7- Oyuncuyu kör et\n"
+                    + "§e/ap rr [oyuncu] §7- Kafayı rastgele döndür\n"
+                    + "§e/ap jump [oyuncu] §7- Oyuncuyu zıplat\n"
+                    + "§e/ap drunk <saniye> [oyuncu] §7- Oyuncuyu sarhoş et\n"
+                    + "§e/ap ice <saniye> [oyuncu] §7- Parkuru buza çevir\n"
+                    + "§e/ap invisible <saniye> [oyuncu] §7- Parkuru görünmez yap\n"
+                    + "§e/ap arrowrain <saniye> [oyuncu] §7- Ok yağmuru başlat\n"
+                    + "§e/ap chaos <saniye> <username> [oyuncu] §7- Kaos modu aktifleştir");
+            return true;
+        }
+
+        //Chaos Mode
+        if (args[0].equalsIgnoreCase("chaos")) {
+            if (args.length < 4) {
+                sender.sendMessage("§cKullanım: /ap chaos <saniye> <username> <oyuncu>");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            String username   = args[2];
+            String playerName = args[3];
+
+            Player target = Bukkit.getPlayerExact(playerName);
+            if (target == null) {
+                sender.sendMessage("§cOyuncu bulunamadı: " + playerName);
+                return true;
+            }
+
+            if (manager.getSession(target) == null) {
+                sender.sendMessage("§cOyuncunun parkuru yok!");
+                return true;
+            }
+
+            // ★ Tüm kaos mantığı artık ChaosManager'da
+            chaosManager.startChaos(target, seconds, username);
+
+            sender.sendMessage("§a☠ " + target.getName()
+                    + " için KAOS MODU başlatıldı! §7(" + seconds + "s)");
+            return true;
+        }
+
+        // ================================================================
+        // ★ ARROWRAIN KOMUTU — YENİ
+        // ================================================================
+        if (args[0].equalsIgnoreCase("arrowrain")) {
+            if (args.length < 2) {
+                sender.sendMessage("§cKullanım: /ap arrowrain <saniye> [oyuncu]");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[1]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 3) {
+                target = Bukkit.getPlayerExact(args[2]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[2]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap arrowrain <saniye> <oyuncu>");
+                return true;
+            }
+
+            arrowRainManager.startArrowRain(target, seconds);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§c🏹 " + target.getName()
+                        + " §e" + seconds + " §csaniye ok yağmuru başlatıldı!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "🏹 ArrowRain: " + target.getName() + " | " + seconds + "s | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ================================================================
+        // ★ ARROWRAINSTOP KOMUTU — YENİ
+        // ================================================================
+        if (args[0].equalsIgnoreCase("arrowrainstop")) {
+            Player target;
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap arrowrainstop <oyuncu>");
+                return true;
+            }
+
+            if (!arrowRainManager.hasArrowRain(target)) {
+                sender.sendMessage("§cBu oyuncunun aktif ok yağmuru yok!");
+                return true;
+            }
+
+            arrowRainManager.stopArrowRain(target);
+            sender.sendMessage("§a🏹 " + target.getName() + " için ok yağmuru durduruldu!");
             return true;
         }
 
@@ -107,7 +255,8 @@ public class APCommand implements CommandExecutor {
                 sender.sendMessage("§e⛓ " + target.getName() + " §csüresinden §e" + Math.abs(seconds) + " §csaniye eksildi!");
             }
 
-            manager.getPlugin().getLogger().info("⛓ Prison: " + target.getName() + " | " + (seconds > 0 ? "+" : "") + seconds + "s | by: " + username);
+            manager.getPlugin().getLogger().info("⛓ Prison: " + target.getName()
+                    + " | " + (seconds > 0 ? "+" : "") + seconds + "s | by: " + username);
             return true;
         }
 
@@ -146,13 +295,9 @@ public class APCommand implements CommandExecutor {
 
             int durationTicks = seconds * 20;
 
-            target.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.BLINDNESS,
-                    durationTicks,
-                    0,      // seviye 0 yeterli
-                    false,  // ambient yok
-                    false,  // partikül yok
-                    false   // ikon gizli
+            target.addPotionEffect(new PotionEffect(
+                    PotionEffectType.BLINDNESS,
+                    durationTicks, 0, false, false, false
             ));
 
             target.sendTitle(
@@ -173,39 +318,27 @@ public class APCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("rr")) {
             Player target;
 
-            // Eğer oyuncu ismi girilmişse
             if (args.length >= 2) {
                 target = Bukkit.getPlayerExact(args[1]);
                 if (target == null) {
                     sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
                     return true;
                 }
-            }
-            // Oyuncu ismi girilmemişse ve komutu yazan oyuncuysa
-            else if (sender instanceof Player) {
+            } else if (sender instanceof Player) {
                 target = (Player) sender;
-            }
-            // Konsoldan isimsiz girilmişse
-            else {
+            } else {
                 sender.sendMessage("§cKonsoldan kullanım: /ap rr <oyuncu>");
                 return true;
             }
 
-            // Oyuncunun mevcut konumunu al
             Location loc = target.getLocation().clone();
-
-            // -180 ile 180 arası rastgele yatay (sola/sağa) açı
             float randomYaw = (random.nextFloat() * 360f) - 180f;
-
             loc.setYaw(randomYaw);
-            loc.setPitch(0f); // 0 = dümdüz karşıya bakar (yukarı/aşağı bakmaz)
-
-            // Oyuncuyu aynı olduğu yere, sadece kafa açısı değişmiş olarak ışınla
+            loc.setPitch(0f);
             target.teleport(loc);
 
             target.sendMessage("§c🌀 Kafan aniden başka bir yöne döndü!");
 
-            // Kendisi dışında birine uygulandıysa mesaj gönder
             if (!sender.equals(target)) {
                 sender.sendMessage("§a🌀 " + target.getName() + " adlı oyuncunun kafası rastgele döndürüldü!");
             }
@@ -233,13 +366,11 @@ public class APCommand implements CommandExecutor {
                 return true;
             }
 
-            // Oyuncu havadaysa zıplatma
             if (!target.isOnGround()) {
                 sender.sendMessage("§cOyuncu havada, zıplatılamaz!");
                 return true;
             }
 
-            // Normal zıplama velocity değeri
             org.bukkit.util.Vector velocity = target.getVelocity();
             velocity.setY(0.92);
             target.setVelocity(velocity);
@@ -289,14 +420,9 @@ public class APCommand implements CommandExecutor {
 
             int durationTicks = seconds * 20;
 
-            // 1.20+ → NAUSEA | Eski sürümler → CONFUSION
-            target.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                    org.bukkit.potion.PotionEffectType.NAUSEA,
-                    durationTicks,
-                    0,
-                    false,
-                    false,
-                    false
+            target.addPotionEffect(new PotionEffect(
+                    PotionEffectType.NAUSEA,
+                    durationTicks, 0, false, false, false
             ));
 
             target.sendTitle(
@@ -398,7 +524,8 @@ public class APCommand implements CommandExecutor {
             invisibleManager.startInvisible(target, seconds);
 
             if (!sender.equals(target)) {
-                sender.sendMessage("§7👻 " + target.getName() + " §e" + seconds + " §7saniye parkuru görünmez yapıldı!");
+                sender.sendMessage("§7👻 " + target.getName()
+                        + " §e" + seconds + " §7saniye parkuru görünmez yapıldı!");
             }
             return true;
         }
@@ -439,7 +566,8 @@ public class APCommand implements CommandExecutor {
 
             int intervalTicks = intervalSeconds * 20;
             lavaManager.startLava(target, intervalTicks);
-            sender.sendMessage("§c🌋 " + target.getName() + " için lav yükseltme başlatıldı! §7(Her " + intervalSeconds + " saniyede 1 seviye)");
+            sender.sendMessage("§c🌋 " + target.getName() + " için lav yükseltme başlatıldı! §7(Her "
+                    + intervalSeconds + " saniyede 1 seviye)");
             return true;
         }
 
@@ -499,10 +627,8 @@ public class APCommand implements CommandExecutor {
 
         // CLEAR
         if (args[0].equalsIgnoreCase("clear")) {
-            // Lav aktifse önce durdur
-            if (lavaManager.hasLava(p)) {
-                lavaManager.stopLava(p);
-            }
+            if (lavaManager.hasLava(p)) lavaManager.stopLava(p);
+            if (arrowRainManager.hasArrowRain(p)) arrowRainManager.stopArrowRain(p);  // ★ YENİ
             manager.clearParkour(p);
             return true;
         }
@@ -570,7 +696,8 @@ public class APCommand implements CommandExecutor {
             );
 
             p.teleport(teleportLoc);
-            p.sendMessage("§a🎲 Rastgele bloğa ışınlandın! §7(Blok: §e" + (randomIndex + 1) + "§7/§e" + jumpBlocks.size() + "§7)");
+            p.sendMessage("§a🎲 Rastgele bloğa ışınlandın! §7(Blok: §e"
+                    + (randomIndex + 1) + "§7/§e" + jumpBlocks.size() + "§7)");
             p.playSound(p.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1f, 1f);
             manager.getPlugin().getLogger().info("🎲 RTP: " + p.getName() + " → Blok " + (randomIndex + 1));
             return true;
@@ -625,12 +752,7 @@ public class APCommand implements CommandExecutor {
             int y = cfg.getInt(path + ".winY");
             int z = cfg.getInt(path + ".winZ");
 
-            Location tp = new Location(
-                    p.getWorld(),
-                    x + 0.5,
-                    y + 1,
-                    z + 0.5
-            );
+            Location tp = new Location(p.getWorld(), x + 0.5, y + 1, z + 0.5);
 
             p.teleport(tp);
             p.sendMessage("§6Zirveye ışınlandın!");
@@ -648,7 +770,6 @@ public class APCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("winc")) {
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId() + ".wins";
-
             int wins = cfg.getInt(path, 0);
             p.sendMessage("§6Toplam Win Sayısı: §a" + wins);
             return true;
@@ -670,7 +791,6 @@ public class APCommand implements CommandExecutor {
 
                 FileConfiguration cfg = manager.getPlugin().getConfig();
                 String path = "parkours." + p.getUniqueId() + ".wins";
-
                 int currentWins = cfg.getInt(path, 0);
                 int newWins = currentWins + amount;
 
@@ -701,7 +821,6 @@ public class APCommand implements CommandExecutor {
 
                 FileConfiguration cfg = manager.getPlugin().getConfig();
                 String path = "parkours." + p.getUniqueId() + ".wins";
-
                 int currentWins = cfg.getInt(path, 0);
                 int newWins = currentWins - amount;
 
@@ -720,7 +839,6 @@ public class APCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("winclear")) {
             FileConfiguration cfg = manager.getPlugin().getConfig();
             String path = "parkours." + p.getUniqueId() + ".wins";
-
             cfg.set(path, 0);
             manager.getPlugin().saveConfig();
             manager.createOrUpdateBossBar(p);
@@ -839,7 +957,8 @@ public class APCommand implements CommandExecutor {
                 Location targetBlock = jumpBlocks.get(targetBlockIndex);
                 Location targetLoc = targetBlock.clone().add(0.5, 1.2, 0.5);
 
-                manager.getPlugin().getLogger().info("🐾 " + args[0].toUpperCase() + " → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex);
+                manager.getPlugin().getLogger().info("🐾 " + args[0].toUpperCase()
+                        + " → Mevcut: " + currentBlockIndex + " | Hedef: " + targetBlockIndex);
 
                 LivingEntity animal;
                 String animalEmoji;
@@ -924,7 +1043,8 @@ public class APCommand implements CommandExecutor {
                 manager.getPlugin().getLogger().info("🔓 " + p.getName() + " area düzenlemesini açtı");
             } else {
                 p.sendMessage("§cArea düzenlemesi KAPANDI! Blokları kıramazsın.");
-                manager.getPlugin().getLogger().info("🔐 " + p.getName() + " area düzenlemesini kapattı - kaydediliyor...");
+                manager.getPlugin().getLogger().info("🔐 " + p.getName()
+                        + " area düzenlemesini kapattı - kaydediliyor...");
 
                 FileConfiguration cfg = manager.getPlugin().getConfig();
                 String path = "parkours." + p.getUniqueId();
@@ -977,7 +1097,8 @@ public class APCommand implements CommandExecutor {
                         if (blockMat != Material.AIR) {
                             session.addBlock(loc, blockMat);
                             blocksScanned++;
-                            manager.getPlugin().getLogger().info("📍 Blok tarandı: " + x + "," + y + "," + z + " -> " + blockMat.name());
+                            manager.getPlugin().getLogger().info("📍 Blok tarandı: "
+                                    + x + "," + y + "," + z + " -> " + blockMat.name());
                         }
                     }
                 }
@@ -1074,7 +1195,7 @@ public class APCommand implements CommandExecutor {
             return true;
         }
 
-        // ★ TNT — Güç azaltıldı + Duvar düzeltmesi
+        // TNT
         if (args[0].equalsIgnoreCase("tnt")) {
             Player target = null;
             String displayName = null;
@@ -1086,10 +1207,8 @@ public class APCommand implements CommandExecutor {
                 }
             }
 
-            // ★ Hedef oyuncuyu belirle
             Player tntTarget = (target != null) ? target : p;
 
-            // ★ DUVAR DÜZELTMESİ: Güvenli spawn noktası bul
             Location tntLoc = tntTarget.getLocation().add(0, 1, 0);
             if (tntLoc.getBlock().getType().isSolid()) {
                 tntLoc = tntTarget.getEyeLocation();
@@ -1125,6 +1244,48 @@ public class APCommand implements CommandExecutor {
 
         sender.sendMessage("§cBilinmeyen komut!");
         return true;
+    }
+
+    // ================================================================
+    // ★ KAOS CLEANUP METHODU
+    // ================================================================
+    private void cleanupChaos(Player target, BukkitTask actionBarTask) {
+        UUID uuid = target.getUniqueId();
+
+        // Action bar task'ı durdur
+        if (actionBarTask != null) {
+            try { actionBarTask.cancel(); } catch (Exception ignored) {}
+        }
+
+        // Kaos countdown task'ı durdur
+        BukkitTask chaosTask = chaosTasks.remove(uuid);
+        if (chaosTask != null) {
+            try { chaosTask.cancel(); } catch (Exception ignored) {}
+        }
+
+        // Lavı durdur
+        if (lavaManager.hasLava(target)) {
+            lavaManager.stopLava(target);
+        }
+
+        // Ok yağmurunu durdur
+        if (arrowRainManager.hasArrowRain(target)) {
+            arrowRainManager.stopArrowRain(target);
+        }
+
+        // Kırmızı atmosferi kaldır
+        try {
+            target.setWorldBorder(null);
+        } catch (Exception ignored) {}
+
+        // İksir efektlerini kaldır (blind + nausea)
+        target.removePotionEffect(PotionEffectType.BLINDNESS);
+        target.removePotionEffect(PotionEffectType.NAUSEA);
+
+        // Ice ve Invisible kendi timer'larıyla durur, ama garantiye alalım
+        // (Zaten stopIce/stopInvisible idempotent)
+
+        manager.getPlugin().getLogger().info("☠ Kaos temizlendi: " + target.getName());
     }
 
     private int findNearestBlockIndex(Location playerLoc, List<Location> jumpBlocks) {

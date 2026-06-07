@@ -12,21 +12,44 @@ public final class ArrowsParkour extends JavaPlugin {
     private LavaManager lavaManager;
     private IceManager iceManager;
     private InvisibleManager invisibleManager;
+    private ArrowRainManager arrowRainManager;
+    private ChaosManager chaosManager; // ★ YENİ
 
     @Override
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
-        parkourManager = new ParkourManager(this);
-        prisonManager = new PrisonManager(this);
-        lavaManager = new LavaManager(this);
-        iceManager = new IceManager(this);
-        invisibleManager = new InvisibleManager(this);
+
+        parkourManager    = new ParkourManager(this);
+        prisonManager     = new PrisonManager(this);
+        lavaManager       = new LavaManager(this);
+        iceManager        = new IceManager(this);
+        invisibleManager  = new InvisibleManager(this);
+        arrowRainManager  = new ArrowRainManager(this);
+
+        // ★ ChaosManager en son oluşturuluyor — diğer manager'lara bağımlı
+        chaosManager = new ChaosManager(
+                this,
+                lavaManager,
+                iceManager,
+                invisibleManager,
+                arrowRainManager,
+                parkourManager
+        );
 
         getCommand("ap").setExecutor(
-                new APCommand(parkourManager, prisonManager, lavaManager, iceManager, invisibleManager));
+                new APCommand(
+                        parkourManager, prisonManager, lavaManager,
+                        iceManager, invisibleManager, arrowRainManager,
+                        chaosManager
+                ));
+
         getServer().getPluginManager().registerEvents(
-                new ParkourListener(parkourManager, prisonManager, lavaManager, iceManager, invisibleManager), this);
+                new ParkourListener(
+                        parkourManager, prisonManager, lavaManager,
+                        iceManager, invisibleManager, arrowRainManager,
+                        chaosManager
+                ), this);
 
         parkourManager.initialize();
         parkourManager.startActionBarTask();
@@ -35,21 +58,25 @@ public final class ArrowsParkour extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        if (lavaManager != null) lavaManager.clearAll();
-        if (prisonManager != null) prisonManager.clearAll();
-        if (iceManager != null) iceManager.clearAll();
+        if (chaosManager != null)    chaosManager.clearAll();      // ★ YENİ — önce kaos
+        if (arrowRainManager != null) arrowRainManager.clearAll();
+        if (lavaManager != null)     lavaManager.clearAll();
+        if (prisonManager != null)   prisonManager.clearAll();
+        if (iceManager != null)      iceManager.clearAll();
+        if (invisibleManager != null) invisibleManager.clearAll();
         if (parkourManager != null) {
             parkourManager.saveAll();
             parkourManager.clearAllSessions();
         }
-        if (invisibleManager != null) invisibleManager.clearAll();
         getLogger().info("Arrow's Parkour durduruldu.");
     }
 
-    public static ArrowsParkour getInstance() { return instance; }
-    public ParkourManager getParkourManager() { return parkourManager; }
-    public PrisonManager getPrisonManager() { return prisonManager; }
-    public LavaManager getLavaManager() { return lavaManager; }
-    public IceManager getIceManager() { return iceManager; }
-    public InvisibleManager getInvisibleManager() { return invisibleManager; }
+    public static ArrowsParkour getInstance()          { return instance; }
+    public ParkourManager getParkourManager()          { return parkourManager; }
+    public PrisonManager getPrisonManager()            { return prisonManager; }
+    public LavaManager getLavaManager()                { return lavaManager; }
+    public IceManager getIceManager()                  { return iceManager; }
+    public InvisibleManager getInvisibleManager()      { return invisibleManager; }
+    public ArrowRainManager getArrowRainManager()      { return arrowRainManager; }
+    public ChaosManager getChaosManager()              { return chaosManager; } // ★ YENİ
 }
