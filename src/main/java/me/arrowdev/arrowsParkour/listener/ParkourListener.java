@@ -20,12 +20,10 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerChangedWorldEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import org.bukkit.event.player.PlayerRespawnEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -86,6 +84,8 @@ public class ParkourListener implements Listener {
         Player p = event.getPlayer();
         manager.onPlayerJoin(p);
 
+        applySaturation(p);
+
         Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
             if (manager.isInParkourWorld(p)) {
                 manager.createOrUpdateBossBar(p);
@@ -93,6 +93,8 @@ public class ParkourListener implements Listener {
             } else {
                 manager.hideBossBar(p);
             }
+
+            manager.getPlugin().getUpdateChecker().notifyPlayer(p);
         }, 20L);
     }
 
@@ -107,11 +109,6 @@ public class ParkourListener implements Listener {
         arrowRainManager.onPlayerQuit(p);
         chaosManager.onPlayerQuit(p);
         manager.removeBossBar(p);
-
-        // ★ Kaos kırmızı ekran temizliği
-        try {
-            p.setWorldBorder(null);
-        } catch (Exception ignored) {}
     }
 
     @EventHandler
@@ -127,11 +124,16 @@ public class ParkourListener implements Listener {
         if (prisonManager.isInPrison(p)) {
             prisonManager.freePrisonerSilently(p);
         }
+    }
 
-        // ★ Kaos kırmızı ekran temizliği
-        try {
-            p.setWorldBorder(null);
-        } catch (Exception ignored) {}
+    @EventHandler
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+        Player p = event.getPlayer();
+
+        Bukkit.getScheduler().runTaskLater(manager.getPlugin(), () -> {
+            if (!p.isOnline()) return;
+            applySaturation(p);
+        }, 5L);
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
@@ -159,12 +161,10 @@ public class ParkourListener implements Listener {
             return;
         }
 
-        int newBlockIndex = session.findNearestBlockIndex();
-        session.setCurrentBlockIndex(newBlockIndex);
-
         int currentY = to.getBlockY();
         int startY = session.getStartY();
         int heightDifference = currentY - startY;
+        int currentBlockY = to.getBlockY();
         UUID uuid = p.getUniqueId();
 
         int lastHeight = lastDisplayHeight.getOrDefault(uuid, 0);
@@ -174,6 +174,14 @@ public class ParkourListener implements Listener {
             if (heightDifference > lastHeight) {
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_BELL, 1f, 1f);
             }
+        }
+
+        if (currentBlockY <= startY
+                && (session.getForwardProtection() != 0
+                || session.getBackwardProtection() != 0)) {
+            session.setForwardProtection(0);
+            session.setBackwardProtection(0);
+            p.sendMessage("§7Başlangıç bloğuna döndün, korumalar sıfırlandı.");
         }
 
         if (heightDifference >= 100) {
@@ -362,10 +370,17 @@ public class ParkourListener implements Listener {
     }
 
     private void applySaturation(Player player) {
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setExhaustion(0f);
+
         player.addPotionEffect(new PotionEffect(
                 PotionEffectType.SATURATION,
-                Integer.MAX_VALUE, 0,
-                false, false, false
+                Integer.MAX_VALUE,
+                1,
+                false,
+                false,
+                false
         ));
     }
 

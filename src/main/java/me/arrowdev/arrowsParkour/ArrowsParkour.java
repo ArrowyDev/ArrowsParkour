@@ -13,7 +13,8 @@ public final class ArrowsParkour extends JavaPlugin {
     private IceManager iceManager;
     private InvisibleManager invisibleManager;
     private ArrowRainManager arrowRainManager;
-    private ChaosManager chaosManager; // ★ YENİ
+    private ChaosManager chaosManager;
+    private UpdateChecker updateChecker;
 
     @Override
     public void onEnable() {
@@ -54,6 +55,13 @@ public final class ArrowsParkour extends JavaPlugin {
         parkourManager.initialize();
         parkourManager.startActionBarTask();
         getLogger().info("✅ Arrow's Parkour başlatıldı!");
+
+        updateChecker = new UpdateChecker(
+                this,
+                "ArrowyDev",
+                "ArrowsParkour"
+        );
+        updateChecker.checkAsync();
     }
 
     @Override
@@ -78,5 +86,6 @@ public final class ArrowsParkour extends JavaPlugin {
     public IceManager getIceManager()                  { return iceManager; }
     public InvisibleManager getInvisibleManager()      { return invisibleManager; }
     public ArrowRainManager getArrowRainManager()      { return arrowRainManager; }
-    public ChaosManager getChaosManager()              { return chaosManager; } // ★ YENİ
+    public ChaosManager getChaosManager()              { return chaosManager; }
+    public UpdateChecker getUpdateChecker() { return updateChecker; }
 }
