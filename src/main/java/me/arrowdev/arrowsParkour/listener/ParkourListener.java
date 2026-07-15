@@ -39,11 +39,13 @@ public class ParkourListener implements Listener {
     private final InvisibleManager invisibleManager;
     private final ArrowRainManager arrowRainManager;
     private final ChaosManager chaosManager;
+    private final GravityManager gravityManager;
 
     public ParkourListener(ParkourManager manager, PrisonManager prisonManager,
                            LavaManager lavaManager, IceManager iceManager,
                            InvisibleManager invisibleManager,
-                           ArrowRainManager arrowRainManager,ChaosManager chaosManager) {   // ★ YENİ parametre
+                           ArrowRainManager arrowRainManager,ChaosManager chaosManager,
+                           GravityManager gravityManager) {
         this.manager = manager;
         this.prisonManager = prisonManager;
         this.lavaManager = lavaManager;
@@ -53,6 +55,7 @@ public class ParkourListener implements Listener {
         this.invisibleManager = invisibleManager;
         this.arrowRainManager = arrowRainManager;
         this.chaosManager = chaosManager;
+        this.gravityManager = gravityManager;
     }
 
     @EventHandler
@@ -108,6 +111,7 @@ public class ParkourListener implements Listener {
         invisibleManager.onPlayerQuit(p);
         arrowRainManager.onPlayerQuit(p);
         chaosManager.onPlayerQuit(p);
+        gravityManager.onPlayerQuit(p);
         manager.removeBossBar(p);
     }
 
@@ -120,6 +124,7 @@ public class ParkourListener implements Listener {
         invisibleManager.onPlayerDeath(p);
         arrowRainManager.onPlayerDeath(p);
         chaosManager.onPlayerDeath(p);
+        gravityManager.onPlayerDeath(p);
 
         if (prisonManager.isInPrison(p)) {
             prisonManager.freePrisonerSilently(p);
@@ -280,9 +285,67 @@ public class ParkourListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPrisonBarBreak(BlockBreakEvent event) {
+        Player p = event.getPlayer();
+
+        org.bukkit.inventory.ItemStack tool = p.getInventory().getItemInMainHand();
+        org.bukkit.inventory.meta.ItemMeta meta = tool.getItemMeta();
+        boolean holdingPrisonPickaxe = tool.getType() == Material.NETHERITE_PICKAXE
+                && meta != null && meta.hasDisplayName()
+                && meta.getDisplayName().equals("§c⛓ Hapishane Kazması");
+
+        if (!holdingPrisonPickaxe) return;
+
+        Block block = event.getBlock();
+
+        if (!prisonManager.isInPrison(p)) {
+            event.setCancelled(true);
+            p.sendMessage("§cBu kazmayı sadece hapisteyken kullanabilirsin!");
+            return;
+        }
+
+        if (block.getType() != Material.IRON_BARS) {
+            event.setCancelled(true);
+            p.sendMessage("§cHapisteyken sadece demir parmaklıkları kırabilirsin!");
+            return;
+        }
+
+        me.arrowdev.arrowsParkour.model.PrisonSession session = prisonManager.getSession(p);
+        if (session == null) return;
+
+        if (!session.getPrisonBlocks().contains(block.getLocation())) {
+            event.setCancelled(true);
+            p.sendMessage("§cBu parmaklık senin hapishanene ait değil!");
+            return;
+        }
+
+        // ★ Kaçış!
+        event.setCancelled(true);
+        block.setType(Material.AIR);
+
+        // ★ Sadece elindeki TEK kazmayı tüket
+        org.bukkit.inventory.ItemStack current = p.getInventory().getItemInMainHand();
+        if (current.getAmount() > 1) {
+            current.setAmount(current.getAmount() - 1);
+        } else {
+            p.getInventory().setItemInMainHand(null);
+        }
+
+        p.sendMessage("§a⛓ Parmaklığı kırdın, kaçıyorsun!");
+
+        // ★ Ses artık burada değil — ışınlandıktan sonra freePrisoner içinde çalınacak
+        prisonManager.onPlayerEscaped(p);
+    }
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Player p = event.getPlayer();
+
+        if (prisonManager.isInPrison(p)) {
+            event.setCancelled(true);   // ★ hapisteyken varsayılan: hiçbir şey kırılamaz
+            return;
+        }
 
         if (!manager.isInParkourWorld(p)) return;
 

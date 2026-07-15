@@ -5,12 +5,16 @@ import me.arrowdev.arrowsParkour.model.PrisonSession;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.Sound;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class PrisonManager {
@@ -18,9 +22,16 @@ public class PrisonManager {
     private final ArrowsParkour plugin;
     private final Map<UUID, PrisonSession> sessions = new HashMap<>();
 
+    // ★ YENİ: Kazma verilen oyuncuları takip et
+    private final Set<UUID> prisonPickaxePlayers = new HashSet<>();
+
     public PrisonManager(ArrowsParkour plugin) {
         this.plugin = plugin;
     }
+
+    // =====================================================================
+    // HAPİSHANEYİ BAŞLAT VEYA SÜREYİ GÜNCELLE
+    // =====================================================================
 
     public void startPrison(Player target, int seconds, String username) {
         UUID uuid = target.getUniqueId();
@@ -30,19 +41,16 @@ public class PrisonManager {
             return;
         }
 
-        ParkourManager parkourManager = plugin.getParkourManager();
-        if (parkourManager != null) {
-            parkourManager.cancelCountdown(target);
+        if (plugin.getParkourManager() != null) {
+            plugin.getParkourManager().cancelCountdown(target);
         }
 
-        // If palyer join the prison for the first time: save last position and build the prison
         Location saved = target.getLocation().clone();
         String subtitleText = "§c" + username + " §fseni hapise attı!";
 
         PrisonSession session = new PrisonSession(saved, seconds, subtitleText);
         sessions.put(uuid, session);
 
-        // Build prison
         Location prisonCenter = buildPrison(target, session);
         if (prisonCenter == null) {
             target.sendMessage("§cHapishane inşa edilemedi! Parkur verisi yok.");
@@ -50,7 +58,6 @@ public class PrisonManager {
             return;
         }
 
-        // Teleport the player in prison
         Location teleportLoc = new Location(
                 prisonCenter.getWorld(),
                 prisonCenter.getX(),
@@ -61,27 +68,18 @@ public class PrisonManager {
         );
         target.teleport(teleportLoc);
 
-        // Title + Subtitle
-        target.sendTitle(
-                "§4⛓ HAPİSHANE ⛓",
-                subtitleText,
-                10, 60, 20
-        );
+        target.sendTitle("§4⛓ HAPİSHANE ⛓", subtitleText, 10, 60, 20);
 
-        // Action bar task
         BukkitTask actionBarTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (!target.isOnline()) return;
             PrisonSession s = sessions.get(uuid);
             if (s == null) return;
-
-            int remaining = s.getRemainingSeconds();
-            String bar = "§c⛓ Hapishane: §e" + remaining + " §csaniye kaldı";
+            String bar = "§c⛓ Hapishane: §e" + s.getRemainingSeconds() + " §csaniye kaldı";
             target.sendActionBar(bar);
         }, 0L, 1L);
 
         session.setActionBarTask(actionBarTask);
 
-        // Countdown task
         BukkitTask countdownTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             if (!target.isOnline()) return;
 
@@ -103,6 +101,10 @@ public class PrisonManager {
         plugin.getLogger().info("⛓ Hapishane başladı: " + target.getName() + " | " + seconds + " saniye");
     }
 
+    // =====================================================================
+    // SÜRE GÜNCELLE
+    // =====================================================================
+
     private void updatePrisonTime(Player target, int seconds, String username) {
         UUID uuid = target.getUniqueId();
         PrisonSession session = sessions.get(uuid);
@@ -112,11 +114,7 @@ public class PrisonManager {
         int newRemaining = oldRemaining + seconds;
 
         if (newRemaining <= 0) {
-            target.sendTitle(
-                    "§a✓ Serbest!",
-                    "§7Süre sıfırlandı, eski konumuna döndün.",
-                    10, 40, 20
-            );
+            target.sendTitle("§a✓ Serbest!", "§7Süre sıfırlandı, eski konumuna döndün.", 10, 40, 20);
             freePrisoner(target);
             return;
         }
@@ -142,13 +140,15 @@ public class PrisonManager {
                 (seconds > 0 ? "+" : "") + seconds + ")");
     }
 
+    // =====================================================================
+    // HAPİSHANEYİ İNŞA ET — 5x5 dış, 3x3 iç alan
+    // =====================================================================
+
     private Location buildPrison(Player target, PrisonSession session) {
         FileConfiguration cfg = plugin.getConfig();
         String path = "parkours." + target.getUniqueId();
 
-        if (!cfg.contains(path + ".baseX")) {
-            return null;
-        }
+        if (!cfg.contains(path + ".baseX")) return null;
 
         int baseX = cfg.getInt(path + ".baseX");
         int baseZ = cfg.getInt(path + ".baseZ");
@@ -158,20 +158,25 @@ public class PrisonManager {
         int centerZ = baseZ + 8;
         int prisonY = baseY + 5;
 
-        org.bukkit.World world = target.getWorld();
+        World world = target.getWorld();
 
-        for (int x = centerX - 1; x <= centerX + 1; x++) {
-            for (int z = centerZ - 1; z <= centerZ + 1; z++) {
+        // Taban (5x5)
+        for (int x = centerX - 2; x <= centerX + 2; x++) {
+            for (int z = centerZ - 2; z <= centerZ + 2; z++) {
                 Location loc = new Location(world, x, prisonY, z);
                 session.addPrisonBlock(loc);
                 loc.getBlock().setType(Material.STONE_BRICKS);
             }
         }
 
-        for (int y = prisonY + 1; y <= prisonY + 2; y++) {
-            for (int x = centerX - 1; x <= centerX + 1; x++) {
-                for (int z = centerZ - 1; z <= centerZ + 1; z++) {
-                    if (x == centerX && z == centerZ) continue;
+        // Duvarlar — dış çevre IRON_BARS, iç 3x3 boş
+        for (int y = prisonY + 1; y <= prisonY + 3; y++) {
+            for (int x = centerX - 2; x <= centerX + 2; x++) {
+                for (int z = centerZ - 2; z <= centerZ + 2; z++) {
+                    if (x >= centerX - 1 && x <= centerX + 1
+                            && z >= centerZ - 1 && z <= centerZ + 1) {
+                        continue;
+                    }
                     Location loc = new Location(world, x, y, z);
                     session.addPrisonBlock(loc);
                     loc.getBlock().setType(Material.IRON_BARS);
@@ -179,15 +184,79 @@ public class PrisonManager {
             }
         }
 
-        for (int x = centerX - 1; x <= centerX + 1; x++) {
-            for (int z = centerZ - 1; z <= centerZ + 1; z++) {
-                Location loc = new Location(world, x, prisonY + 3, z);
+        // Tavan (5x5)
+        for (int x = centerX - 2; x <= centerX + 2; x++) {
+            for (int z = centerZ - 2; z <= centerZ + 2; z++) {
+                Location loc = new Location(world, x, prisonY + 4, z);
                 session.addPrisonBlock(loc);
                 loc.getBlock().setType(Material.STONE_BRICKS);
             }
         }
 
         return new Location(world, centerX + 0.5, prisonY + 1, centerZ + 0.5);
+    }
+
+    // =====================================================================
+    // ★ YENİ: KAZMA VER
+    // =====================================================================
+
+    public void givePrisonPickaxe(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        prisonPickaxePlayers.add(uuid);
+
+        // Netherite Pickaxe oluştur
+        org.bukkit.inventory.ItemStack pickaxe = new org.bukkit.inventory.ItemStack(Material.NETHERITE_PICKAXE);
+        org.bukkit.inventory.meta.ItemMeta meta = pickaxe.getItemMeta();
+        meta.setDisplayName("§c⛓ Hapishane Kazması");
+        meta.setLore(java.util.Arrays.asList(
+                "§7Bu kazma ile sadece demir parmaklıkları kırabilirsin.",
+                "§7Kır ve kaç!"
+        ));
+
+        // ★ Kırılmaz yap (infinite durability)
+        meta.setUnbreakable(true);
+
+        pickaxe.setItemMeta(meta);
+
+        // Envanterinin ilk boş slotuna ver, doluysa elindekini değiştir
+        player.getInventory().addItem(pickaxe);
+
+        player.sendMessage("§a⛓ Hapishane kazması aldın! Demir parmaklıkları kır ve kaç!");
+        player.sendTitle("§c⛓ KAÇIŞ!", "§7Demir parmaklıkları kır ve kaç!", 10, 40, 10);
+
+        plugin.getLogger().info("⛓ Kazma verildi: " + player.getName());
+    }
+
+    // =====================================================================
+    // ★ YENİ: OYUNCU HAPİSHANEDEN KAÇTI MI?
+    // Demir parmaklık kırıldıktan sonra oyuncu hapishane dışına çıkınca çağrılır
+    // =====================================================================
+
+    public void onPlayerEscaped(Player player) {
+        UUID uuid = player.getUniqueId();
+
+        // Envanterde hâlâ kazma var mı diye kontrol et — bulk silme YOK
+        if (!hasAnyPrisonPickaxeInInventory(player)) {
+            prisonPickaxePlayers.remove(uuid);
+        }
+
+        freePrisoner(player);
+
+        plugin.getLogger().info("⛓ Oyuncu kaçtı: " + player.getName());
+    }
+
+    private boolean hasAnyPrisonPickaxeInInventory(Player player) {
+        for (org.bukkit.inventory.ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() == Material.NETHERITE_PICKAXE) {
+                org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                if (meta != null && meta.hasDisplayName()
+                        && meta.getDisplayName().equals("§c⛓ Hapishane Kazması")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public void freePrisoner(Player player) {
@@ -200,32 +269,12 @@ public class PrisonManager {
 
         if (player.isOnline()) {
             player.teleport(session.getSavedLocation());
+
+            // ★ Ses artık ışınlandıktan SONRA, oyuncunun yeni (eski) konumunda çalıyor
+            player.playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 1f, 1.2f);
+
             player.sendTitle("§a✓ Serbest!", "§7Eski konumuna döndün.", 10, 40, 20);
             player.sendActionBar("§aSerbest kaldın!");
-
-            // ★ WIN NOKTASINA DÖNDÜYSE SAYACI BAŞLAT
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (!player.isOnline()) return;
-
-                ParkourManager parkourManager = plugin.getParkourManager();
-                if (parkourManager == null) return;
-
-                me.arrowdev.arrowsParkour.model.ParkourSession parkourSession =
-                        parkourManager.getSession(player);
-                if (parkourSession == null) return;
-
-                if (!parkourManager.isInParkourWorld(player)) return;
-
-                int currentY = player.getLocation().getBlockY();
-                int startY = parkourSession.getStartY();
-                int heightDiff = currentY - startY;
-
-                if (heightDiff >= 100) {
-                    parkourManager.startCountdownIfNeeded(player, heightDiff);
-                    plugin.getLogger().info("✓ Hapis sonrası win noktası tespit edildi, sayaç başlatıldı: "
-                            + player.getName() + " | yükseklik farkı: " + heightDiff);
-                }
-            }, 5L); // 5 tick bekle — teleport yerleşsin
         }
 
         sessions.remove(uuid);
@@ -239,6 +288,9 @@ public class PrisonManager {
 
         session.cancelTasks();
         removePrisonStructure(session);
+
+        // ★ Kazma silme YOK
+
         sessions.remove(uuid);
     }
 
@@ -249,10 +301,15 @@ public class PrisonManager {
 
         session.cancelTasks();
         removePrisonStructure(session);
+        // ★ prisonPickaxePlayers.remove(uuid) YOK — kazmalar kalıcı
         sessions.remove(uuid);
 
         plugin.getLogger().info("⛓ Oyuncu çıktı, hapishane silindi: " + player.getName());
     }
+
+    // =====================================================================
+    // YAPIYI TEMİZLE
+    // =====================================================================
 
     private void removePrisonStructure(PrisonSession session) {
         for (Location loc : session.getPrisonBlocks()) {
@@ -261,6 +318,10 @@ public class PrisonManager {
             } catch (Exception ignored) {}
         }
     }
+
+    // =====================================================================
+    // YARDIMCI
+    // =====================================================================
 
     public boolean isInPrison(Player player) {
         return sessions.containsKey(player.getUniqueId());
@@ -276,5 +337,6 @@ public class PrisonManager {
             removePrisonStructure(session);
         }
         sessions.clear();
+        prisonPickaxePlayers.clear();
     }
 }

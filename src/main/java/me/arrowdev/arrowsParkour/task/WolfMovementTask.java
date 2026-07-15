@@ -6,8 +6,6 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Wolf;
 
-// ★ WolfMovementTask artık AnimalMovementTask'ı kullanıyor
-// Geriye dönük uyumluluk için sınıf korundu
 public class WolfMovementTask extends AnimalMovementTask {
 
     public WolfMovementTask(ArrowsParkour plugin, Player player, Wolf wolf,

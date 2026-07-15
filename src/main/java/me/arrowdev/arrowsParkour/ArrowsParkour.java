@@ -15,6 +15,7 @@ public final class ArrowsParkour extends JavaPlugin {
     private ArrowRainManager arrowRainManager;
     private ChaosManager chaosManager;
     private UpdateChecker updateChecker;
+    private GravityManager gravityManager;
 
     @Override
     public void onEnable() {
@@ -27,6 +28,7 @@ public final class ArrowsParkour extends JavaPlugin {
         iceManager        = new IceManager(this);
         invisibleManager  = new InvisibleManager(this);
         arrowRainManager  = new ArrowRainManager(this);
+        gravityManager    = new GravityManager(this);
 
         // ★ ChaosManager en son oluşturuluyor — diğer manager'lara bağımlı
         chaosManager = new ChaosManager(
@@ -42,14 +44,14 @@ public final class ArrowsParkour extends JavaPlugin {
                 new APCommand(
                         parkourManager, prisonManager, lavaManager,
                         iceManager, invisibleManager, arrowRainManager,
-                        chaosManager
+                        chaosManager, gravityManager
                 ));
 
         getServer().getPluginManager().registerEvents(
                 new ParkourListener(
                         parkourManager, prisonManager, lavaManager,
                         iceManager, invisibleManager, arrowRainManager,
-                        chaosManager
+                        chaosManager, gravityManager
                 ), this);
 
         parkourManager.initialize();

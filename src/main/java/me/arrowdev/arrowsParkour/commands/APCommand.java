@@ -30,6 +30,7 @@ public class APCommand implements CommandExecutor {
     private final InvisibleManager invisibleManager;
     private final ArrowRainManager arrowRainManager;
     private final ChaosManager chaosManager;
+    private final GravityManager gravityManager;
 
     private final Map<UUID, BukkitTask> rrTasks = new HashMap<>();
 
@@ -39,7 +40,8 @@ public class APCommand implements CommandExecutor {
     public APCommand(ParkourManager manager, PrisonManager prisonManager,
                      LavaManager lavaManager, IceManager iceManager,
                      InvisibleManager invisibleManager,
-                     ArrowRainManager arrowRainManager,ChaosManager chaosManager) {
+                     ArrowRainManager arrowRainManager,ChaosManager chaosManager,
+                     GravityManager gravityManager) {
         this.manager = manager;
         this.prisonManager = prisonManager;
         this.lavaManager = lavaManager;
@@ -47,6 +49,7 @@ public class APCommand implements CommandExecutor {
         this.invisibleManager = invisibleManager;
         this.arrowRainManager = arrowRainManager;
         this.chaosManager = chaosManager;
+        this.gravityManager = gravityManager;
     }
 
     @Override
@@ -84,7 +87,10 @@ public class APCommand implements CommandExecutor {
                     + "§e/ap ice <saniye> [oyuncu] §7- Parkuru buza çevir\n"
                     + "§e/ap invisible <saniye> [oyuncu] §7- Parkuru görünmez yap\n"
                     + "§e/ap arrowrain <saniye> [oyuncu] §7- Ok yağmuru başlat\n"
-                    + "§e/ap chaos <saniye> <username> [oyuncu] §7- Kaos modu aktifleştir");
+                    + "§e/ap chaos <saniye> <username> [oyuncu] §7- Kaos modu aktifleştir\n"
+                    + "§e/ap ppickaxe [oyuncu] §7- Hapishaneye kazma ver\n"
+                    + "§e/ap ppickaxe [oyuncu] §7- Hapishaneye kazma ver\n"
+            );
             return true;
         }
 
@@ -487,6 +493,115 @@ public class APCommand implements CommandExecutor {
             );
             return true;
         }
+
+        // ======================== GRAVITY KOMUTU ========================
+        if (args[0].equalsIgnoreCase("gravity")) {
+            if (args.length < 3) {
+                sender.sendMessage("§cKullanım: /ap gravity <low|high> <saniye> [oyuncu]");
+                return true;
+            }
+
+            String mode = args[1].toLowerCase();
+            if (!mode.equals("low") && !mode.equals("high")) {
+                sender.sendMessage("§cMod 'low' ya da 'high' olmalı!");
+                return true;
+            }
+
+            int seconds;
+            try {
+                seconds = Integer.parseInt(args[2]);
+                if (seconds <= 0) {
+                    sender.sendMessage("§cSüre 0'dan büyük olmalı!");
+                    return true;
+                }
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cGeçerli bir saniye gir!");
+                return true;
+            }
+
+            Player target;
+            if (args.length >= 4) {
+                target = Bukkit.getPlayerExact(args[3]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[3]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap gravity <low|high> <saniye> <oyuncu>");
+                return true;
+            }
+
+            gravityManager.startGravity(target, mode, seconds);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§a🪶 " + target.getName() + " için "
+                        + (mode.equals("low") ? "düşük" : "yüksek")
+                        + " yerçekimi başlatıldı! §7(" + seconds + "s)");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "🪶 Gravity: " + target.getName() + " | " + mode + " | " + seconds + "s | by: " + sender.getName()
+            );
+            return true;
+        }
+
+        // ======================== GRAVITYSTOP KOMUTU ========================
+        if (args[0].equalsIgnoreCase("gravitystop")) {
+            Player target;
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap gravitystop <oyuncu>");
+                return true;
+            }
+
+            if (!gravityManager.hasGravity(target)) {
+                sender.sendMessage("§cBu oyuncunun aktif yerçekimi etkisi yok!");
+                return true;
+            }
+
+            gravityManager.stopGravity(target, true);
+            sender.sendMessage("§a🪶 " + target.getName() + " için yerçekimi durduruldu!");
+            return true;
+        }
+
+        // ======================== PPICKAXE KOMUTU ========================
+        if (args[0].equalsIgnoreCase("ppickaxe")) {
+            Player target;
+            if (args.length >= 2) {
+                target = Bukkit.getPlayerExact(args[1]);
+                if (target == null) {
+                    sender.sendMessage("§cOyuncu bulunamadı: " + args[1]);
+                    return true;
+                }
+            } else if (sender instanceof Player) {
+                target = (Player) sender;
+            } else {
+                sender.sendMessage("§cKonsoldan kullanım: /ap ppickaxe <oyuncu>");
+                return true;
+            }
+
+            prisonManager.givePrisonPickaxe(target);
+
+            if (!sender.equals(target)) {
+                sender.sendMessage("§a⛓ " + target.getName() + " için hapishane kazması verildi!");
+            }
+
+            manager.getPlugin().getLogger().info(
+                    "⛓ Pickaxe: " + target.getName() + " | by: " + sender.getName()
+            );
+            return true;
+        }
+
+
 
         // ======================== INVISIBLE KOMUTU ========================
         if (args[0].equalsIgnoreCase("invisible")) {
